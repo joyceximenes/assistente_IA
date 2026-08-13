@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { analyzeFrameForGuidance } from "../services/guidance";
-import { speakThrottled, stopSpeaking } from "../services/voice";
+import { speak, speakThrottled, stopSpeaking } from "../services/voice";
+import { vibrateReady, vibrateCapture, vibrateError } from "../services/haptics";
 
 // ou voltar para a tela anterior ou o App vai enviar para analyze
 type Props = {
@@ -18,6 +19,8 @@ export default function Camera({ onBack, onCaptured }: Props) {
   const [ready, setReady] = useState(false);
   // mensagem de orientação para o usuário
   const [hint, setHint] = useState("Centralize o conteúdo no alvo.");
+  // estado anterior do guidance, para vibrar só na transição ruim -> bom
+  const wasOkRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -51,9 +54,10 @@ export default function Camera({ onBack, onCaptured }: Props) {
           tryGuidance();
         }, 700);
       } catch {
-        setError(
-          "Não foi possível acessar a câmera. Verifique permissões e tente novamente."
-        );
+        const msg = "Não foi possível acessar a câmera. Verifique permissões e tente novamente.";
+        setError(msg);
+        speak(msg);
+        vibrateError();
       }
     }
 
@@ -79,6 +83,10 @@ export default function Camera({ onBack, onCaptured }: Props) {
 
       const g = analyzeFrameForGuidance(img); // analise de orientação
       setHint(g.message); // mostra a mensagem para o usuário
+
+      // vibra uma vez quando o enquadramento fica bom (feedback háptico)
+      if (g.ok && !wasOkRef.current) vibrateReady();
+      wasOkRef.current = g.ok;
 
       speakThrottled(g.message, 1300); // fala a mensagem em voz alta
     }
@@ -113,7 +121,9 @@ export default function Camera({ onBack, onCaptured }: Props) {
     const height = video.videoHeight;
 
     if (!width || !height) {
-      setError("Câmera ainda não está pronta para captura.");
+      const msg = "Câmera ainda não está pronta para captura.";
+      setError(msg);
+      speak(msg);
       return;
     }
 
@@ -124,7 +134,9 @@ export default function Camera({ onBack, onCaptured }: Props) {
 
     const ctx = canvas.getContext("2d");
     if (!ctx) {
-      setError("Falha ao preparar captura.");
+      const msg = "Falha ao preparar captura.";
+      setError(msg);
+      speak(msg);
       return;
     }
 
@@ -137,10 +149,13 @@ export default function Camera({ onBack, onCaptured }: Props) {
     );
 
     if (!blob) {
-      setError("Falha ao capturar imagem.");
+      const msg = "Falha ao capturar imagem.";
+      setError(msg);
+      speak(msg);
       return;
     }
 
+    vibrateCapture();
     stopCamera();
     onCaptured(blob);
   }
@@ -159,19 +174,28 @@ export default function Camera({ onBack, onCaptured }: Props) {
       </div>
 
       <div className="camera-controls">
-        {error && <div className="camera-error">{error}</div>}
+        {error && (
+          <div className="camera-error" role="alert">
+            {error}
+          </div>
+        )}
 
-        <div className="camera-hint">{hint}</div>
+        <div className="camera-hint" aria-live="polite">{hint}</div>
 
         <button
           className={`btn-primary camera-capture ${!ready ? "btn-disabled" : ""}`}
           onClick={capture}
           disabled={!ready}
+          aria-label="Capturar imagem"
         >
           Capturar
         </button>
 
-        <button className="btn-secondary camera-back" onClick={onBack}>
+        <button
+          className="btn-secondary camera-back"
+          onClick={onBack}
+          aria-label="Voltar para a tela inicial"
+        >
           Voltar
         </button>
       </div>

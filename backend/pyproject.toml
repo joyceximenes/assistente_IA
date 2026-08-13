@@ -1,0 +1,22 @@
+[project]
+name = "avia-backend"
+version = "0.1.0"
+description = "API do AVIA — Assistente Visual Acessível (OCR e reconhecimento de objetos via Google Cloud Vision)"
+requires-python = ">=3.11"
+dependencies = [
+    # fastapi[standard] já traz uvicorn, python-multipart (uploads) e a CLI `fastapi`
+    "fastapi[standard]>=0.115",
+    "pydantic>=2.9",
+    "google-cloud-vision>=3.7",
+    "google-api-core>=2.19",
+    "pillow>=10.4",
+]
+
+[tool.fastapi]
+# Permite rodar só `fastapi dev` / `fastapi run` de dentro de backend/
+entrypoint = "src.main:app"
+
+[tool.uv]
+# O app é executado pelo caminho de módulo (src.main:app), não instalado como
+# pacote — então o uv só gerencia as dependências.
+package = false

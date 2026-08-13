@@ -1,5 +1,10 @@
 import React, { useEffect, useRef, useState } from "react";
-import { listenForCommand5s, speak, stopSpeaking } from "../services/voice";
+import {
+  isSpeechRecognitionSupported,
+  listenOnce,
+  speakAsync,
+  stopSpeaking,
+} from "../services/voice";
 
 
 // dispara evento de voz para abrir câmera 
@@ -20,25 +25,32 @@ export default function Home({ onOpenCamera }: Props) {
       if (ranRef.current) return;
       ranRef.current = true; // executa uma vez só
 
-      // Saudação visual e auditiva
-      speak("Olá! Diga abrir câmera ou toque no botão para iniciar.");
+      // Saudação visual e auditiva (aguarda terminar antes de ouvir,
+      // para o microfone não captar a própria fala)
+      await speakAsync("Olá! Diga abrir câmera ou toque no botão para iniciar.");
+      if (cancelled) return;
+
+      if (!isSpeechRecognitionSupported()) {
+        setStatus("Reconhecimento de voz não disponível. Use os botões.");
+        return;
+      }
+
       setStatus("Aguardando comando por 5 segundos…");
 
       // Aguarda comando por 5s. Silêncio/outro = abort.
-      const outcome = await listenForCommand5s(); // aguarda comando de voz
+      const heard = await listenOnce(5000);
       if (cancelled) return;
 
-      if (outcome === "open_camera") {
+      if (heard && (heard.includes("câmera") || heard.includes("camera") || heard.includes("abrir"))) {
         setStatus("Abrindo câmera…");
         onOpenCamera(); // solicita abrir câmera para o App
         return;
       }
 
-      // abort / not_supported -> não faz nada, fica na tela
       setStatus(
-        outcome === "not_supported"
-          ? "Reconhecimento de voz não disponível. Use os botões."
-          : "Comando inválido ou silêncio. Processo abortado."
+        heard === null
+          ? "Nenhum comando ouvido. Toque no botão para iniciar."
+          : "Comando não reconhecido. Toque no botão para iniciar."
       );
     }
 
@@ -61,7 +73,11 @@ export default function Home({ onOpenCamera }: Props) {
 
         {/* Área central do card */}
         <div className="home-center">
-          <button className="btn-primary" onClick={onOpenCamera}>
+          <button
+            className="btn-primary"
+            onClick={onOpenCamera}
+            aria-label="Abrir câmera para capturar imagem"
+          >
             Abrir câmera
           </button>
         </div>

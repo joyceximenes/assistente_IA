@@ -1,18 +1,29 @@
-import React, {useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 
 import Home from "./routes/Home";
 import Camera from "./routes/Camera";
 import Result from "./routes/Result";
 import { analyzeImage } from "./services/api";
+import { speak } from "./services/voice";
+import { vibrateError } from "./services/haptics";
 
 // navegação, nessa ordem. useState
 type Screen = "home" | "camera" | "result";
+
+// objeto localizado na imagem, com posição na grade 3x3 (vinda do backend)
+export type DetectedObject = {
+  name: string; // nome original (inglês)
+  name_pt: string; // nome traduzido para fala
+  score: number;
+  position: string; // ex.: "no centro", "à esquerda, na parte de cima"
+};
 
 // contrato da resposta da análise. define como o front recebe de /analyze no back
 export type AnalyzeResponse = {
   type: "text" | "object" | "unknown" | "error";
   result: string; // o que está escrito / qual objeto / mensagem de erro
   confidence: number; // nivel de confiança da inferência, em porcentagem
+  objects?: DetectedObject[]; // objetos com posição na grade 3x3
   meta?: {  // metadados para debug / info extra
     filename?: string | null;
     content_type?: string | null;
@@ -74,15 +85,18 @@ export default function App() {
   async function handleCaptured(blob: Blob) {
     /* trata a imagem capturada na câmera */
     setIsAnalyzing(true);
+    speak("Analisando imagem. Aguarde alguns segundos.");
 
     try {
       const result = await analyzeImage(blob); // envia para o backend
       goResult(result); // vai para a tela de resultado
     } catch {
+      const errorMsg = "Falha ao analisar imagem. Verifique conexão e tente novamente.";
+      speak(errorMsg);
+      vibrateError();
       goResult({
         type: "error",
-        result:
-          "Falha ao analisar imagem. Verifique conexão com o backend e tente novamente.",
+        result: errorMsg,
         confidence: 0,
         meta: null,
       });
@@ -121,9 +135,11 @@ export default function App() {
 
       {/* se estiver no resultado, mostra o resultado e opções de retry ou home */}
       {screen === "result" && lastResult && (
-        <Result result={lastResult} 
-        onRetry={goCamera} 
-        onHome={goHome} />
+        <Result
+          result={lastResult}
+          onRetry={goCamera}
+          onHome={goHome}
+        />
       )}
     </div>
   );

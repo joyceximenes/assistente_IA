@@ -75,7 +75,7 @@ body {
 }
 
 .app-overlay-subtitle {
-  font-size: 12px;
+  font-size: 14px;
   opacity: 0.85;
   margin-top: 6px;
 }
@@ -86,7 +86,7 @@ body {
   max-width: 840px;
   background: var(--card);
   border-radius: 16px;
-  padding: 96px;
+  padding: clamp(20px, 6vw, 40px);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
 }
 
@@ -149,6 +149,7 @@ body {
 
 .btn-secondary {
   flex: 1;
+  min-height: 44px;
   padding: 12px 14px;
   border-radius: 12px;
   border: 1px solid var(--border-2);
@@ -156,6 +157,9 @@ body {
   color: var(--text);
   font-size: 16px;
   font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 
@@ -211,7 +215,7 @@ body {
   border-radius: 10px;
   background: var(--danger);
   border: 1px solid var(--danger-border);
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.3;
   max-width: min(520px, 92%);
   text-align: center;
@@ -224,7 +228,7 @@ body {
 
 .camera-hint {
   margin-top: 4px;
-  font-size: 13px;
+  font-size: 14px;
   opacity: 0.9;
   text-align: center;
 }
@@ -287,7 +291,7 @@ body {
 
 .result-meta {
   margin-top: 10px;
-  font-size: 12px;
+  font-size: 14px;
   opacity: 0.8;
 }
 
@@ -302,7 +306,7 @@ body {
 .home-card .hint {
   margin-top: auto;
   padding-top: 20px;
-  font-size: 12px;
+  font-size: 14px;
   opacity: 0.85;
   text-align: center;
 }

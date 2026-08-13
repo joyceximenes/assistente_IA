@@ -1,5 +1,3 @@
-type ListenOutcome = "open_camera" | "cancel" | "abort" | "not_supported";
-
 export function speak(text: string, opts?: { rate?: number; pitch?: number }) {
   if (!("speechSynthesis" in window)) return;
 
@@ -12,6 +10,40 @@ export function speak(text: string, opts?: { rate?: number; pitch?: number }) {
   if (opts?.pitch) u.pitch = opts.pitch;
 
   window.speechSynthesis.speak(u);
+}
+
+// Fala e resolve quando terminar — necessário para encadear fala + escuta
+// sem que o microfone capte a própria síntese de voz.
+export function speakAsync(
+  text: string,
+  opts?: { rate?: number; pitch?: number }
+): Promise<void> {
+  return new Promise((resolve) => {
+    if (!("speechSynthesis" in window)) return resolve();
+
+    window.speechSynthesis.cancel();
+
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = "pt-BR";
+    if (opts?.rate) u.rate = opts.rate;
+    if (opts?.pitch) u.pitch = opts.pitch;
+
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      window.clearTimeout(fallback);
+      resolve();
+    };
+
+    // fallback: alguns navegadores não disparam onend de forma confiável
+    const fallback = window.setTimeout(finish, 3000 + text.length * 100);
+
+    u.onend = finish;
+    u.onerror = finish;
+
+    window.speechSynthesis.speak(u);
+  });
 }
 
 export function stopSpeaking() {
@@ -33,11 +65,18 @@ function getSpeechRecognitionCtor(): any | null {
   return w.SpeechRecognition || w.webkitSpeechRecognition || null;
 }
 
-export async function listenForCommand5s(): Promise<ListenOutcome> {
-  const SR = getSpeechRecognitionCtor();
-  if (!SR) return "not_supported";
+export function isSpeechRecognitionSupported(): boolean {
+  return getSpeechRecognitionCtor() !== null;
+}
 
-  return new Promise<ListenOutcome>((resolve) => {
+// Escuta UMA fala do usuário e devolve a transcrição (minúscula, sem espaços
+// nas pontas), ou null em caso de silêncio, erro ou falta de suporte.
+// Obs.: o SpeechRecognition do Chrome processa na nuvem — exige internet.
+export function listenOnce(timeoutMs = 6000): Promise<string | null> {
+  const SR = getSpeechRecognitionCtor();
+  if (!SR) return Promise.resolve(null);
+
+  return new Promise<string | null>((resolve) => {
     const recog = new SR();
     recog.lang = "pt-BR";
     recog.interimResults = false;
@@ -45,45 +84,29 @@ export async function listenForCommand5s(): Promise<ListenOutcome> {
 
     let finished = false;
 
-    const timer = window.setTimeout(() => {
-      if (finished) return;
-      finished = true;
-      try {
-        recog.stop();
-      } catch {}
-      resolve("abort"); // silêncio = abortar
-    }, 5000);
-
-    function done(outcome: ListenOutcome) {
+    function finish(value: string | null) {
       if (finished) return;
       finished = true;
       window.clearTimeout(timer);
       try {
         recog.stop();
       } catch {}
-      resolve(outcome);
+      resolve(value);
     }
+
+    const timer = window.setTimeout(() => finish(null), timeoutMs);
 
     recog.onresult = (e: any) => {
       const t = (e?.results?.[0]?.[0]?.transcript || "").toLowerCase().trim();
-
-      // Qualquer coisa diferente de “abrir câmera” ou “cancelar” aborta
-      if (t.includes("abrir") && t.includes("câmera")) return done("open_camera");
-      if (t.includes("cancelar")) return done("cancel");
-
-      return done("abort");
+      finish(t || null);
     };
-
-    recog.onerror = () => done("abort");
-    recog.onend = () => {
-      // se terminar antes do timeout sem resultado -> abort
-      if (!finished) done("abort");
-    };
+    recog.onerror = () => finish(null);
+    recog.onend = () => finish(null); // terminou sem resultado = silêncio
 
     try {
       recog.start();
     } catch {
-      done("abort");
+      finish(null);
     }
   });
 }
