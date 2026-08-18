@@ -11,6 +11,7 @@ interface SpeechRecognitionInstance {
   maxAlternatives: number;
   start(): void;
   stop(): void;
+  abort(): void;
   onresult: ((event: SpeechRecognitionResultEvent) => void) | null;
   onerror: (() => void) | null;
   onend: (() => void) | null;
@@ -92,11 +93,18 @@ export function isSpeechRecognitionSupported(): boolean {
 }
 
 // Escuta UMA fala do usuário e devolve a transcrição (minúscula, sem espaços
-// nas pontas), ou null em caso de silêncio, erro ou falta de suporte.
+// nas pontas), ou null em caso de silêncio, erro, falta de suporte ou
+// cancelamento via `signal`.
 // Obs.: o SpeechRecognition do Chrome processa na nuvem — exige internet.
-export function listenOnce(timeoutMs = 6000): Promise<string | null> {
+//
+// `signal` permite ao chamador desligar o microfone imediatamente (ex.: o
+// componente que iniciou a escuta desmontou) em vez de esperar o timeout —
+// sem isso, o microfone continua ativo por até `timeoutMs` depois do usuário
+// já ter saído da tela.
+export function listenOnce(timeoutMs = 6000, signal?: AbortSignal): Promise<string | null> {
   const SR = getSpeechRecognitionCtor();
   if (!SR) return Promise.resolve(null);
+  if (signal?.aborted) return Promise.resolve(null);
 
   return new Promise<string | null>((resolve) => {
     const recog = new SR();
@@ -110,13 +118,24 @@ export function listenOnce(timeoutMs = 6000): Promise<string | null> {
       if (finished) return;
       finished = true;
       window.clearTimeout(timer);
+      signal?.removeEventListener("abort", onAbort);
       try {
         recog.stop();
       } catch {}
       resolve(value);
     }
 
+    function onAbort() {
+      // abort() corta o reconhecimento na hora, sem esperar um resultado
+      // final — diferente de stop(), que pode processar o áudio já captado.
+      try {
+        recog.abort();
+      } catch {}
+      finish(null);
+    }
+
     const timer = window.setTimeout(() => finish(null), timeoutMs);
+    signal?.addEventListener("abort", onAbort);
 
     recog.onresult = (e: SpeechRecognitionResultEvent) => {
       const t = (e?.results?.[0]?.[0]?.transcript || "").toLowerCase().trim();

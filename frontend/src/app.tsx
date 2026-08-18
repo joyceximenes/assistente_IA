@@ -3,7 +3,6 @@ import Camera from "./routes/Camera";
 import Home from "./routes/Home";
 import Result from "./routes/Result";
 import { analyzeImage } from "./services/api";
-import { vibrateError } from "./services/haptics";
 import { speak } from "./services/voice";
 
 // navegação, nessa ordem. useState
@@ -86,23 +85,15 @@ export default function App() {
     setIsAnalyzing(true);
     speak("Analisando imagem. Aguarde alguns segundos.");
 
-    try {
-      const result = await analyzeImage(blob); // envia para o backend
-      goResult(result); // vai para a tela de resultado
-    } catch {
-      const errorMsg = "Falha ao analisar imagem. Verifique conexão e tente novamente.";
-      speak(errorMsg);
-      vibrateError();
-      goResult({
-        type: "error",
-        result: errorMsg,
-        confidence: 0,
-        meta: null,
-      });
-    } finally {
-      // desativa o overlay de análise
-      setIsAnalyzing(false);
-    }
+    // analyzeImage() nunca rejeita — toda falha (offline, timeout, rede,
+    // resposta não-2xx, corpo inválido) já vira um AnalyzeResponse com
+    // type: "error" dentro de api.ts. Por isso não há try/catch aqui; a
+    // narração do erro (fala + vibração) acontece em Result.tsx ao montar,
+    // igual a qualquer outro resultado.
+    const result = await analyzeImage(blob);
+    goResult(result);
+
+    setIsAnalyzing(false);
   }
 
   return (

@@ -27,6 +27,9 @@ export default function Result({ result, onRetry, onHome }: Props) {
   // executa o fluxo de voz uma vez só (StrictMode monta 2x em dev)
   const ranRef = useRef(false);
   const cancelledRef = useRef(false);
+  // Compartilhada com runVoiceFlow (fora do useEffect) para poder desligar o
+  // microfone na hora ao desmontar, em vez de esperar o timeout do listenOnce.
+  const controllerRef = useRef<AbortController | null>(null);
 
   const isTextLong = result.type === "text" && cleanText(result.result).length > SHORT_TEXT_LIMIT;
 
@@ -37,12 +40,15 @@ export default function Result({ result, onRetry, onHome }: Props) {
   // biome-ignore lint/correctness/useExhaustiveDependencies: guardado por ranRef, ver comentário acima
   useEffect(() => {
     cancelledRef.current = false;
+    const controller = new AbortController();
+    controllerRef.current = controller;
     if (!ranRef.current) {
       ranRef.current = true;
       runVoiceFlow();
     }
     return () => {
       cancelledRef.current = true;
+      controller.abort(); // desliga o microfone na hora, sem esperar o timeout
       stopSpeaking();
     };
   }, []);
@@ -107,7 +113,7 @@ export default function Result({ result, onRetry, onHome }: Props) {
     let misses = 0;
     while (!cancelledRef.current && misses < 3) {
       setVoiceStatus(`Ouvindo… ${COMMANDS_HINT}`);
-      const heard = await listenOnce(6000);
+      const heard = await listenOnce(6000, controllerRef.current?.signal);
       if (cancelledRef.current) return;
 
       if (heard === null) {

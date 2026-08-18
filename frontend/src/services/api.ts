@@ -65,6 +65,15 @@ export async function analyzeImage(blob: Blob): Promise<AnalyzeResponse> {
     };
   }
 
-  const data = (await res.json()) as AnalyzeResponse;
-  return data;
+  try {
+    return (await res.json()) as AnalyzeResponse;
+  } catch {
+    // 200 com corpo que não é JSON válido (corte de rede, proxy, etc.)
+    return {
+      type: "error",
+      result: "Resposta inválida do servidor. Tente novamente.",
+      confidence: 0,
+      meta: null,
+    };
+  }
 }

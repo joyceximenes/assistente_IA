@@ -19,6 +19,7 @@ export default function Home({ onOpenCamera }: Props) {
 
   useEffect(() => {
     let cancelled = false;
+    const controller = new AbortController();
 
     async function runOnce() {
       if (ranRef.current) return;
@@ -37,7 +38,7 @@ export default function Home({ onOpenCamera }: Props) {
       setStatus("Aguardando comando por 5 segundos…");
 
       // Aguarda comando por 5s. Silêncio/outro = abort.
-      const heard = await listenOnce(5000);
+      const heard = await listenOnce(5000, controller.signal);
       if (cancelled) return;
 
       if (
@@ -60,6 +61,7 @@ export default function Home({ onOpenCamera }: Props) {
 
     return () => {
       cancelled = true;
+      controller.abort(); // desliga o microfone na hora, sem esperar o timeout
       stopSpeaking();
     };
   }, [onOpenCamera]);
