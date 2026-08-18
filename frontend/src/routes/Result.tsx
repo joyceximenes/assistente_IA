@@ -1,12 +1,12 @@
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { AnalyzeResponse } from "../app";
+import { vibrateError, vibrateResult } from "../services/haptics";
 import {
   isSpeechRecognitionSupported,
   listenOnce,
   speakAsync,
   stopSpeaking,
 } from "../services/voice";
-import { vibrateResult, vibrateError } from "../services/haptics";
 
 // recebe as props o resultado da análise e funções para retry e home
 type Props = {
@@ -28,9 +28,13 @@ export default function Result({ result, onRetry, onHome }: Props) {
   const ranRef = useRef(false);
   const cancelledRef = useRef(false);
 
-  const isTextLong =
-    result.type === "text" && cleanText(result.result).length > SHORT_TEXT_LIMIT;
+  const isTextLong = result.type === "text" && cleanText(result.result).length > SHORT_TEXT_LIMIT;
 
+  // Intencionalmente roda uma vez só, guardado por ranRef — não pela dep array.
+  // Incluir runVoiceFlow nas deps faria o cleanup (stopSpeaking) disparar a
+  // cada re-render causado por setVoiceStatus dentro do próprio fluxo,
+  // cortando a fala no meio quase toda hora.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: guardado por ranRef, ver comentário acima
   useEffect(() => {
     cancelledRef.current = false;
     if (!ranRef.current) {
@@ -41,7 +45,6 @@ export default function Result({ result, onRetry, onHome }: Props) {
       cancelledRef.current = true;
       stopSpeaking();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ---------- fala ----------
@@ -103,7 +106,7 @@ export default function Result({ result, onRetry, onHome }: Props) {
 
     let misses = 0;
     while (!cancelledRef.current && misses < 3) {
-      setVoiceStatus("Ouvindo… " + COMMANDS_HINT);
+      setVoiceStatus(`Ouvindo… ${COMMANDS_HINT}`);
       const heard = await listenOnce(6000);
       if (cancelledRef.current) return;
 
@@ -142,7 +145,7 @@ export default function Result({ result, onRetry, onHome }: Props) {
       }
 
       misses++;
-      await speakAsync("Não entendi. " + COMMANDS_HINT);
+      await speakAsync(`Não entendi. ${COMMANDS_HINT}`);
     }
 
     setVoiceStatus("Use os botões na tela.");
@@ -154,7 +157,7 @@ export default function Result({ result, onRetry, onHome }: Props) {
   }
 
   return (
-    <div className="card" role="main" aria-label="Resultado da análise">
+    <main className="card" aria-label="Resultado da análise">
       <h2 className="h2">Resultado</h2>
 
       <div className="result-block">
@@ -177,8 +180,11 @@ export default function Result({ result, onRetry, onHome }: Props) {
           <div className="result-content">
             <div className="result-label">Objetos (grade 3x3):</div>
             <div className="result-box">
-              {result.objects!.map((o, i) => (
-                <div key={i}>
+              {result.objects?.map((o, i) => (
+                // Sem ID estável vindo do backend; a lista não é reordenada
+                // após a renderização, então nome+índice é seguro aqui.
+                // biome-ignore lint/suspicious/noArrayIndexKey: sem ID estável, lista não é reordenada
+                <div key={`${o.name}-${i}`}>
                   {o.name_pt}
                   {o.position ? ` — ${o.position}` : ""} ({Math.round(o.score * 100)}%)
                 </div>
@@ -187,12 +193,15 @@ export default function Result({ result, onRetry, onHome }: Props) {
           </div>
         )}
 
-        <div className="result-meta" aria-live="polite">{voiceStatus}</div>
+        <div className="result-meta" aria-live="polite">
+          {voiceStatus}
+        </div>
       </div>
 
       {isTextLong && (
         <div className="row">
           <button
+            type="button"
             className="btn-secondary"
             onClick={handleReadAllButton}
             aria-label="Ler o texto completo em voz alta"
@@ -204,6 +213,7 @@ export default function Result({ result, onRetry, onHome }: Props) {
 
       <div className="row">
         <button
+          type="button"
           className="btn-secondary"
           onClick={onRetry}
           aria-label="Tentar novamente, voltar para câmera"
@@ -211,6 +221,7 @@ export default function Result({ result, onRetry, onHome }: Props) {
           Nova foto
         </button>
         <button
+          type="button"
           className="btn-secondary"
           onClick={onHome}
           aria-label="Voltar para a tela inicial"
@@ -218,7 +229,7 @@ export default function Result({ result, onRetry, onHome }: Props) {
           Início
         </button>
       </div>
-    </div>
+    </main>
   );
 }
 

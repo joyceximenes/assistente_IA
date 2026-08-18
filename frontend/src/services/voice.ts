@@ -1,3 +1,28 @@
+// A Web Speech API (SpeechRecognition) ainda não tem tipos no lib.dom.d.ts
+// padrão do TypeScript (é vendor-prefixed em alguns navegadores). Declaramos
+// o subconjunto mínimo que usamos, em vez de recorrer a `any`.
+interface SpeechRecognitionResultEvent {
+  results: ArrayLike<ArrayLike<{ transcript: string }>>;
+}
+
+interface SpeechRecognitionInstance {
+  lang: string;
+  interimResults: boolean;
+  maxAlternatives: number;
+  start(): void;
+  stop(): void;
+  onresult: ((event: SpeechRecognitionResultEvent) => void) | null;
+  onerror: (() => void) | null;
+  onend: (() => void) | null;
+}
+
+type SpeechRecognitionCtor = new () => SpeechRecognitionInstance;
+
+interface SpeechRecognitionWindow extends Window {
+  SpeechRecognition?: SpeechRecognitionCtor;
+  webkitSpeechRecognition?: SpeechRecognitionCtor;
+}
+
 export function speak(text: string, opts?: { rate?: number; pitch?: number }) {
   if (!("speechSynthesis" in window)) return;
 
@@ -14,10 +39,7 @@ export function speak(text: string, opts?: { rate?: number; pitch?: number }) {
 
 // Fala e resolve quando terminar — necessário para encadear fala + escuta
 // sem que o microfone capte a própria síntese de voz.
-export function speakAsync(
-  text: string,
-  opts?: { rate?: number; pitch?: number }
-): Promise<void> {
+export function speakAsync(text: string, opts?: { rate?: number; pitch?: number }): Promise<void> {
   return new Promise((resolve) => {
     if (!("speechSynthesis" in window)) return resolve();
 
@@ -60,8 +82,8 @@ export function speakThrottled(text: string, cooldownMs = 1200) {
   speak(text);
 }
 
-function getSpeechRecognitionCtor(): any | null {
-  const w = window as any;
+function getSpeechRecognitionCtor(): SpeechRecognitionCtor | null {
+  const w = window as SpeechRecognitionWindow;
   return w.SpeechRecognition || w.webkitSpeechRecognition || null;
 }
 
@@ -96,7 +118,7 @@ export function listenOnce(timeoutMs = 6000): Promise<string | null> {
 
     const timer = window.setTimeout(() => finish(null), timeoutMs);
 
-    recog.onresult = (e: any) => {
+    recog.onresult = (e: SpeechRecognitionResultEvent) => {
       const t = (e?.results?.[0]?.[0]?.transcript || "").toLowerCase().trim();
       finish(t || null);
     };

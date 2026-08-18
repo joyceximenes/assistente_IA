@@ -1,7 +1,7 @@
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { analyzeFrameForGuidance } from "../services/guidance";
+import { vibrateCapture, vibrateError, vibrateReady } from "../services/haptics";
 import { speak, speakThrottled, stopSpeaking } from "../services/voice";
-import { vibrateReady, vibrateCapture, vibrateError } from "../services/haptics";
 
 // ou voltar para a tela anterior ou o App vai enviar para analyze
 type Props = {
@@ -99,7 +99,10 @@ export default function Camera({ onBack, onCaptured }: Props) {
       if (intervalId) window.clearInterval(intervalId);
       stopSpeaking();
       const stream = streamRef.current;
-      if (stream) stream.getTracks().forEach((t) => t.stop());
+      if (stream)
+        stream.getTracks().forEach((t) => {
+          t.stop();
+        });
       streamRef.current = null;
     };
   }, []);
@@ -107,7 +110,9 @@ export default function Camera({ onBack, onCaptured }: Props) {
   function stopCamera() {
     const stream = streamRef.current;
     if (stream) {
-      stream.getTracks().forEach((t) => t.stop());
+      stream.getTracks().forEach((t) => {
+        t.stop();
+      });
       streamRef.current = null;
     }
   }
@@ -145,7 +150,7 @@ export default function Camera({ onBack, onCaptured }: Props) {
 
     // converte o conteúdo do canvas para um blob JPEG
     const blob: Blob | null = await new Promise((resolve) =>
-      canvas.toBlob(resolve, "image/jpeg", 0.9)
+      canvas.toBlob(resolve, "image/jpeg", 0.9),
     );
 
     if (!blob) {
@@ -163,13 +168,7 @@ export default function Camera({ onBack, onCaptured }: Props) {
   return (
     <div className="camera-container">
       <div className="camera-preview-wrap">
-        <video
-          ref={videoRef}
-          className="camera-video"
-          playsInline
-          muted
-          autoPlay
-        />
+        <video ref={videoRef} className="camera-video" playsInline muted autoPlay />
         <div className="camera-reticle" aria-hidden="true" />
       </div>
 
@@ -180,9 +179,12 @@ export default function Camera({ onBack, onCaptured }: Props) {
           </div>
         )}
 
-        <div className="camera-hint" aria-live="polite">{hint}</div>
+        <div className="camera-hint" aria-live="polite">
+          {hint}
+        </div>
 
         <button
+          type="button"
           className={`btn-primary camera-capture ${!ready ? "btn-disabled" : ""}`}
           onClick={capture}
           disabled={!ready}
@@ -192,6 +194,7 @@ export default function Camera({ onBack, onCaptured }: Props) {
         </button>
 
         <button
+          type="button"
           className="btn-secondary camera-back"
           onClick={onBack}
           aria-label="Voltar para a tela inicial"

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   isSpeechRecognitionSupported,
   listenOnce,
@@ -6,8 +6,7 @@ import {
   stopSpeaking,
 } from "../services/voice";
 
-
-// dispara evento de voz para abrir câmera 
+// dispara evento de voz para abrir câmera
 type Props = {
   onOpenCamera: () => void;
 };
@@ -41,7 +40,10 @@ export default function Home({ onOpenCamera }: Props) {
       const heard = await listenOnce(5000);
       if (cancelled) return;
 
-      if (heard && (heard.includes("câmera") || heard.includes("camera") || heard.includes("abrir"))) {
+      if (
+        heard &&
+        (heard.includes("câmera") || heard.includes("camera") || heard.includes("abrir"))
+      ) {
         setStatus("Abrindo câmera…");
         onOpenCamera(); // solicita abrir câmera para o App
         return;
@@ -50,7 +52,7 @@ export default function Home({ onOpenCamera }: Props) {
       setStatus(
         heard === null
           ? "Nenhum comando ouvido. Toque no botão para iniciar."
-          : "Comando não reconhecido. Toque no botão para iniciar."
+          : "Comando não reconhecido. Toque no botão para iniciar.",
       );
     }
 
@@ -67,13 +69,12 @@ export default function Home({ onOpenCamera }: Props) {
       <h1 className="home-title">Avia - Assistente Visual Acessível</h1>
 
       <div className="card home-card">
-        <p className="p">
-          Olá! Diga “abrir câmera” ou toque no botão para iniciar.
-        </p>
+        <p className="p">Olá! Diga “abrir câmera” ou toque no botão para iniciar.</p>
 
         {/* Área central do card */}
         <div className="home-center">
           <button
+            type="button"
             className="btn-primary"
             onClick={onOpenCamera}
             aria-label="Abrir câmera para capturar imagem"
@@ -82,9 +83,10 @@ export default function Home({ onOpenCamera }: Props) {
           </button>
         </div>
 
-        <p className="hint">Aguardando comando por 5 segundos…</p>
+        <p className="hint" aria-live="polite">
+          {status}
+        </p>
       </div>
     </div>
   );
 }
-

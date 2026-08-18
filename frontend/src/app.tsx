@@ -1,11 +1,10 @@
-import React, { useEffect, useState } from "react";
-
-import Home from "./routes/Home";
+import { useEffect, useState } from "react";
 import Camera from "./routes/Camera";
+import Home from "./routes/Home";
 import Result from "./routes/Result";
 import { analyzeImage } from "./services/api";
-import { speak } from "./services/voice";
 import { vibrateError } from "./services/haptics";
+import { speak } from "./services/voice";
 
 // navegação, nessa ordem. useState
 type Screen = "home" | "camera" | "result";
@@ -24,12 +23,13 @@ export type AnalyzeResponse = {
   result: string; // o que está escrito / qual objeto / mensagem de erro
   confidence: number; // nivel de confiança da inferência, em porcentagem
   objects?: DetectedObject[]; // objetos com posição na grade 3x3
-  meta?: {  // metadados para debug / info extra
+  meta?: {
+    // metadados para debug / info extra
     filename?: string | null;
     content_type?: string | null;
     bytes?: number | null;
   } | null;
-  raw?: any; // dados brutos da API do google vision, para debug/melhorias
+  raw?: unknown; // dados brutos da API do google vision, para debug/melhorias
 };
 
 export default function App() {
@@ -81,7 +81,6 @@ export default function App() {
     }
   }, [screen]);
 
-
   async function handleCaptured(blob: Blob) {
     /* trata a imagem capturada na câmera */
     setIsAnalyzing(true);
@@ -100,17 +99,14 @@ export default function App() {
         confidence: 0,
         meta: null,
       });
-    } finally { // desativa o overlay de análise
+    } finally {
+      // desativa o overlay de análise
       setIsAnalyzing(false);
     }
   }
 
   return (
-    <div
-      className={`app-container ${
-        screen === "camera" ? "app-container-camera" : ""
-      }`}
-    >
+    <div className={`app-container ${screen === "camera" ? "app-container-camera" : ""}`}>
       {isAnalyzing && (
         <div className="app-overlay" role="status" aria-live="polite">
           <div className="app-overlay-card">
@@ -121,7 +117,7 @@ export default function App() {
       )}
 
       {/* se estiver na home, chama para abrir a câmera */}
-      {screen === "home" && <Home onOpenCamera={goCamera}/>}
+      {screen === "home" && <Home onOpenCamera={goCamera} />}
 
       {/* se estiver na camera, ou volta para home ou captura a imagem */}
       {screen === "camera" && (
@@ -135,11 +131,7 @@ export default function App() {
 
       {/* se estiver no resultado, mostra o resultado e opções de retry ou home */}
       {screen === "result" && lastResult && (
-        <Result
-          result={lastResult}
-          onRetry={goCamera}
-          onHome={goHome}
-        />
+        <Result result={lastResult} onRetry={goCamera} onHome={goHome} />
       )}
     </div>
   );

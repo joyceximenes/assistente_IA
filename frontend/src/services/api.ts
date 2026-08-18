@@ -4,8 +4,9 @@ const DEFAULT_BASE_URL = "http://localhost:8000";
 const TIMEOUT_MS = 15_000; // 15 segundos
 
 export function getApiBaseUrl() {
-  // Define de onde vem a URL base da API
-  return (import.meta as any).env?.VITE_API_BASE_URL || DEFAULT_BASE_URL;
+  // Define de onde vem a URL base da API.
+  // Tipado em vite-env.d.ts (ImportMetaEnv) — sem cast necessário.
+  return import.meta.env?.VITE_API_BASE_URL || DEFAULT_BASE_URL;
 }
 
 // Envia a imagem para o backend (Google Vision). Requer conexão com a internet.

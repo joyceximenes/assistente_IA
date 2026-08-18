@@ -1,16 +1,16 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from google.cloud import vision
 from google.api_core import exceptions as gexc
+from google.cloud import vision
 
 
 class VisionProviderError(RuntimeError):
     """Erro controlado do provedor de visão (Google Vision)."""
 
 
-_client: Optional[vision.ImageAnnotatorClient] = None
+_client: vision.ImageAnnotatorClient | None = None
 
 
 def _get_client() -> vision.ImageAnnotatorClient:
@@ -24,7 +24,7 @@ def _get_client() -> vision.ImageAnnotatorClient:
     return _client
 
 
-def analyze_with_google_vision(image_bytes: bytes) -> Dict[str, Any]:
+def analyze_with_google_vision(image_bytes: bytes) -> dict[str, Any]:
     """
     Executa OCR (text_detection), labels (label_detection) e localização de
     objetos (object_localization) em UMA única chamada à API — menor latência
@@ -49,8 +49,8 @@ def analyze_with_google_vision(image_bytes: bytes) -> Dict[str, Any]:
             raise VisionProviderError(f"Vision error: {response.error.message}")
 
         # Transformar para estruturas simples (serializáveis) — evita carregar objetos protobuf no response
-        text_annotations: List[Dict[str, Any]] = []
-        for ann in (response.text_annotations or []):
+        text_annotations: list[dict[str, Any]] = []
+        for ann in response.text_annotations or []:
             text_annotations.append(
                 {
                     "description": getattr(ann, "description", ""),
@@ -59,8 +59,8 @@ def analyze_with_google_vision(image_bytes: bytes) -> Dict[str, Any]:
                 }
             )
 
-        labels: List[Dict[str, Any]] = []
-        for lab in (response.label_annotations or []):
+        labels: list[dict[str, Any]] = []
+        for lab in response.label_annotations or []:
             labels.append(
                 {
                     "description": getattr(lab, "description", ""),
@@ -71,8 +71,8 @@ def analyze_with_google_vision(image_bytes: bytes) -> Dict[str, Any]:
 
         # Objetos localizados: vêm com bounding box NORMALIZADA (0..1),
         # o que permite calcular a posição na grade 3x3 sem saber a resolução.
-        objects: List[Dict[str, Any]] = []
-        for obj in (response.localized_object_annotations or []):
+        objects: list[dict[str, Any]] = []
+        for obj in response.localized_object_annotations or []:
             vertices = [
                 {"x": float(getattr(v, "x", 0.0) or 0.0), "y": float(getattr(v, "y", 0.0) or 0.0)}
                 for v in (getattr(obj.bounding_poly, "normalized_vertices", []) or [])
@@ -86,9 +86,9 @@ def analyze_with_google_vision(image_bytes: bytes) -> Dict[str, Any]:
             )
 
         return {
-            "text_annotations": text_annotations,   # OCR detalhado (inclui bounding boxes)
-            "labels": labels,                       # labels gerais com score
-            "objects": objects,                     # objetos localizados (box normalizada)
+            "text_annotations": text_annotations,  # OCR detalhado (inclui bounding boxes)
+            "labels": labels,  # labels gerais com score
+            "objects": objects,  # objetos localizados (box normalizada)
             "raw": {
                 # opcional: mantenha pouco para debug (evite gigantismo)
                 "text_count": len(text_annotations),
@@ -106,7 +106,7 @@ def analyze_with_google_vision(image_bytes: bytes) -> Dict[str, Any]:
         raise VisionProviderError(f"Unexpected vision error: {e}") from e
 
 
-def _bounding_poly_to_dict(bpoly: Any) -> Optional[Dict[str, Any]]:
+def _bounding_poly_to_dict(bpoly: Any) -> dict[str, Any] | None:
     if not bpoly:
         return None
     vertices = []

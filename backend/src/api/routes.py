@@ -1,18 +1,19 @@
 from typing import Annotated
 
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, File, HTTPException, UploadFile
 
-from src.api.schemas import AnalyzeResponse, AnalyzeMeta, DetectedObject
+from src.api.schemas import AnalyzeMeta, AnalyzeResponse, DetectedObject
 from src.core.config import settings
+from src.services.decision import decide_text_or_object
 from src.services.image_io import (
     ImageValidationError,
-    validate_upload_size,
     normalize_image,
+    validate_upload_size,
 )
-from src.services.vision_google import analyze_with_google_vision, VisionProviderError
-from src.services.decision import decide_text_or_object
+from src.services.vision_google import VisionProviderError, analyze_with_google_vision
 
 router = APIRouter()
+
 
 @router.get("/health")
 def health() -> dict[str, str]:
@@ -37,7 +38,7 @@ def analyze(image: Annotated[UploadFile, File()]) -> AnalyzeResponse:
     try:
         validate_upload_size(data, max_bytes=settings.max_upload_bytes)
     except ImageValidationError as e:
-        raise HTTPException(status_code=413, detail=str(e))
+        raise HTTPException(status_code=413, detail=str(e)) from e
 
     # 4) normalizar (reduz custo/latência e estabiliza input)
     try:
@@ -49,13 +50,13 @@ def analyze(image: Annotated[UploadFile, File()]) -> AnalyzeResponse:
             jpeg_quality=85,
         )
     except ImageValidationError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
     # 5) chamar Google Vision
     try:
         vision_result = analyze_with_google_vision(normalized.bytes)
     except VisionProviderError as e:
-        raise HTTPException(status_code=502, detail=str(e))
+        raise HTTPException(status_code=502, detail=str(e)) from e
 
     # 6) decidir texto vs objeto
     decision = decide_text_or_object(vision_result)

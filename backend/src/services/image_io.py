@@ -2,10 +2,9 @@ from __future__ import annotations
 
 import io
 from dataclasses import dataclass
-from typing import Literal, Optional, Tuple
+from typing import Literal
 
 from PIL import Image  # pillow
-
 
 SupportedMime = Literal["image/jpeg", "image/png", "image/webp"]
 
@@ -81,7 +80,7 @@ def normalize_image(
     return NormalizedImage(bytes=out_bytes, mime=output_mime, width=w, height=h)
 
 
-def _resize_keep_aspect(w: int, h: int, *, max_side_px: int) -> Tuple[int, int]:
+def _resize_keep_aspect(w: int, h: int, *, max_side_px: int) -> tuple[int, int]:
     if max(w, h) <= max_side_px:
         return w, h
     if w >= h:

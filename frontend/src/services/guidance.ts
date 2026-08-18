@@ -6,9 +6,7 @@ export type Guidance = {
   brightnessScore: number;
 };
 
-export function analyzeFrameForGuidance(
-  imageData: ImageData
-): Guidance {
+export function analyzeFrameForGuidance(imageData: ImageData): Guidance {
   const { data, width, height } = imageData;
 
   // Converte para luminância (grayscale) e calcula brilho médio
@@ -45,7 +43,7 @@ export function analyzeFrameForGuidance(
       const right = gray[idx + 1];
 
       // laplacian
-      const lap = (up + down + left + right) - 4 * c;
+      const lap = up + down + left + right - 4 * c;
       sum += lap;
       sum2 += lap * lap;
       count++;
@@ -64,23 +62,41 @@ export function analyzeFrameForGuidance(
   const edgeScore = edgeSum / Math.max(1, count); // maior = mais detalhe/borda
 
   // thresholds empiricamente razoáveis para frames pequenos (240px)
-  const BRIGHTNESS_LOW = 30;  // muito escuro => ambiente sem luz
+  const BRIGHTNESS_LOW = 30; // muito escuro => ambiente sem luz
   const BRIGHTNESS_HIGH = 240; // saturado => luz excessiva/reflexo
-  const BLUR_MIN = 120;        // muito baixo => desfocado/tremido
-  const EDGE_LOW = 18;         // baixo => longe/escuro
-  const EDGE_HIGH = 55;        // alto demais => muito perto/cortando
+  const BLUR_MIN = 120; // muito baixo => desfocado/tremido
+  const EDGE_LOW = 18; // baixo => longe/escuro
+  const EDGE_HIGH = 55; // alto demais => muito perto/cortando
 
   // brilho verificado primeiro (independe de blur/edge)
   if (brightnessScore < BRIGHTNESS_LOW) {
-    return { ok: false, message: "Ambiente muito escuro. Aproxime de uma luz.", blurScore, edgeScore, brightnessScore };
+    return {
+      ok: false,
+      message: "Ambiente muito escuro. Aproxime de uma luz.",
+      blurScore,
+      edgeScore,
+      brightnessScore,
+    };
   }
 
   if (brightnessScore > BRIGHTNESS_HIGH) {
-    return { ok: false, message: "Luz excessiva. Evite reflexos e luz direta.", blurScore, edgeScore, brightnessScore };
+    return {
+      ok: false,
+      message: "Luz excessiva. Evite reflexos e luz direta.",
+      blurScore,
+      edgeScore,
+      brightnessScore,
+    };
   }
 
   if (blurScore < BLUR_MIN) {
-    return { ok: false, message: "Mantenha firme e ajuste o foco.", blurScore, edgeScore, brightnessScore };
+    return {
+      ok: false,
+      message: "Mantenha firme e ajuste o foco.",
+      blurScore,
+      edgeScore,
+      brightnessScore,
+    };
   }
 
   if (edgeScore < EDGE_LOW) {
@@ -88,8 +104,20 @@ export function analyzeFrameForGuidance(
   }
 
   if (edgeScore > EDGE_HIGH) {
-    return { ok: false, message: "Afaste um pouco a câmera.", blurScore, edgeScore, brightnessScore };
+    return {
+      ok: false,
+      message: "Afaste um pouco a câmera.",
+      blurScore,
+      edgeScore,
+      brightnessScore,
+    };
   }
 
-  return { ok: true, message: "Posicionamento bom. Pode capturar.", blurScore, edgeScore, brightnessScore };
+  return {
+    ok: true,
+    message: "Posicionamento bom. Pode capturar.",
+    blurScore,
+    edgeScore,
+    brightnessScore,
+  };
 }

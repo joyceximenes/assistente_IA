@@ -1,11 +1,10 @@
 from dataclasses import dataclass, field
-from typing import Any, Dict, List
-
+from typing import Any
 
 # O Google Vision retorna nomes de objetos em inglês.
 # Dicionário de tradução para os objetos mais comuns no contexto do app
 # (rótulos, embalagens, ambientes domésticos). Fallback: nome original.
-OBJECT_NAMES_PT: Dict[str, str] = {
+OBJECT_NAMES_PT: dict[str, str] = {
     "person": "pessoa",
     "bottle": "garrafa",
     "bottled and jarred packaged goods": "produto embalado",
@@ -105,18 +104,18 @@ OBJECT_NAMES_PT: Dict[str, str] = {
 
 @dataclass
 class DetectedObjectInfo:
-    name: str          # nome original (inglês, como veio do Vision)
-    name_pt: str       # nome traduzido para fala
+    name: str  # nome original (inglês, como veio do Vision)
+    name_pt: str  # nome traduzido para fala
     score: float
-    position: str      # posição na grade 3x3 ("no centro", "à esquerda", ...)
+    position: str  # posição na grade 3x3 ("no centro", "à esquerda", ...)
 
 
 @dataclass
 class Decision:
-    type: str          # "text" | "object" | "unknown"
+    type: str  # "text" | "object" | "unknown"
     result: str
     confidence: float
-    objects: List[DetectedObjectInfo] = field(default_factory=list)
+    objects: list[DetectedObjectInfo] = field(default_factory=list)
 
 
 def translate_object_name(name: str) -> str:
@@ -143,8 +142,8 @@ def grid_position_label(cx: float, cy: float) -> str:
     return f"{col_label}, {row_label}"
 
 
-def _extract_objects(vision_data: Dict[str, Any]) -> List[DetectedObjectInfo]:
-    detected: List[DetectedObjectInfo] = []
+def _extract_objects(vision_data: dict[str, Any]) -> list[DetectedObjectInfo]:
+    detected: list[DetectedObjectInfo] = []
     for obj in vision_data.get("objects", []) or []:
         name = (obj.get("name") or "").strip()
         if not name:
@@ -167,7 +166,7 @@ def _extract_objects(vision_data: Dict[str, Any]) -> List[DetectedObjectInfo]:
     return detected
 
 
-def decide_text_or_object(vision_data: Dict[str, Any]) -> Decision:
+def decide_text_or_object(vision_data: dict[str, Any]) -> Decision:
     """
     Aplica regra de decisão:
     - Se houver OCR relevante → texto (objetos vão junto, como contexto)
@@ -201,7 +200,7 @@ def decide_text_or_object(vision_data: Dict[str, Any]) -> Decision:
 
     # Labels gerais (sem posição)
     if labels:
-        best = max(labels, key=lambda l: l.get("score", 0))
+        best = max(labels, key=lambda label: label.get("score", 0))
         return Decision(
             type="object",
             result=translate_object_name(best.get("description", "Objeto")),
