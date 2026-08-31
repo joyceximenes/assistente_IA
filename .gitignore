@@ -19,3 +19,6 @@ backend/credentials/*
 !backend/credentials/.gitkeep
 *.json.bak
 service-account*.json
+
+# relatório de cobertura dos testes (gerado por vitest --coverage)
+coverage/
