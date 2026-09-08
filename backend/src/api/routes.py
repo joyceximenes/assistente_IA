@@ -10,7 +10,7 @@ from src.services.image_io import (
     normalize_image,
     validate_upload_size,
 )
-from src.services.vision_google import VisionProviderError, analyze_with_google_vision
+from src.services.vision_free import VisionProviderError, analyze_with_free_apis
 
 router = APIRouter()
 
@@ -52,9 +52,9 @@ def analyze(image: Annotated[UploadFile, File()]) -> AnalyzeResponse:
     except ImageValidationError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
-    # 5) chamar Google Vision
+    # 5) chamar os provedores de visão (OCR.space + Hugging Face)
     try:
-        vision_result = analyze_with_google_vision(normalized.bytes)
+        vision_result = analyze_with_free_apis(normalized.bytes)
     except VisionProviderError as e:
         raise HTTPException(status_code=502, detail=str(e)) from e
 

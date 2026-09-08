@@ -42,9 +42,8 @@ def normalize_image(
     Abre a imagem, corrige orientação (quando possível), redimensiona (se necessário)
     e reencoda para um formato consistente (por padrão JPEG).
 
-    Por quê?
     - diminui payload
-    - acelera chamada à Vision API
+    - acelera chamada aos provedores de visão
     - reduz chance de erro com arquivos estranhos
     """
     try:
@@ -56,7 +55,7 @@ def normalize_image(
     if img.mode not in ("RGB", "L"):
         img = img.convert("RGB")
     elif img.mode == "L":
-        # imagem grayscale ok, mas Vision costuma ir bem com RGB; opcional
+        # imagem grayscale ok, mas os provedores costumam ir bem com RGB; opcional
         img = img.convert("RGB")
 
     # Redimensiona mantendo proporção

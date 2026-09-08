@@ -1,15 +1,15 @@
 [project]
 name = "avia-backend"
 version = "0.1.0"
-description = "API do AVIA — Assistente Visual Acessível (OCR e reconhecimento de objetos via Google Cloud Vision)"
+description = "API do AVIA — Assistente Visual Acessível (OCR via OCR.space, reconhecimento de objetos via Hugging Face Inference API)"
 requires-python = ">=3.11"
 dependencies = [
-    # fastapi[standard] já traz uvicorn, python-multipart (uploads) e a CLI `fastapi`
+    # fastapi[standard] já traz uvicorn, python-multipart (uploads), httpx e a CLI `fastapi`
     "fastapi[standard]>=0.115",
     "pydantic>=2.9",
-    "google-cloud-vision>=3.7",
-    "google-api-core>=2.19",
     "pillow>=10.4",
+    "python-dotenv>=1.0",
+    "httpx>=0.27",
 ]
 
 [tool.fastapi]
@@ -23,6 +23,9 @@ package = false
 
 [dependency-groups]
 dev = [
+    "poethepoet>=0.48.0",
+    "pytest>=9.1.1",
+    "pytest-cov>=7.1.0",
     "ruff>=0.16.3",
 ]
 
@@ -47,3 +50,30 @@ ignore = [
 
 [tool.ruff.format]
 quote-style = "double"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.poe.tasks]
+# Atalhos de tarefa. Rodar com: uv run poe <nome>
+test = "pytest -v"
+coverage = "pytest --cov --cov-report=term-missing"
+lint = "ruff check ."
+
+[tool.coverage.run]
+# Mede só o código da aplicação; sem isso o relatório inclui os próprios testes.
+source = ["src"]
+# Fora do relatório: código sem lógica própria para testar. O percentual passa a
+# medir só o que se pretende cobrir, em vez de diluir com o que nunca terá teste.
+omit = [
+    "*/__init__.py",      # vazios, só marcam pacote
+    "src/main.py",        # monta o app e o CORS
+    "src/api/schemas.py", # declaração Pydantic; quem valida é a biblioteca
+    "src/core/config.py", # leitura de variável de ambiente
+    "src/core/logging.py",# configuração do logger
+]
+
+[tool.coverage.report]
+# Mostra a coluna Missing com as linhas que nenhum teste executou.
+show_missing = true

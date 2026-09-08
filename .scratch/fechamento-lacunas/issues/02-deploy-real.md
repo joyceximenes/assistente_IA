@@ -10,7 +10,7 @@
 - [ ] Backend publicado no Railway ou Render, acessível via HTTPS.
 - [ ] CORS do backend liberando o domínio de produção do frontend (além de manter localhost para desenvolvimento).
 - [ ] `frontend/.env` de produção aponta para a URL do backend publicado; chave `VITE_API_BASE_URL` duplicada removida.
-- [ ] Credenciais do Google Vision configuradas como variável de ambiente no provedor do backend (nunca commitadas no repositório).
+- [ ] `OCR_SPACE_API_KEY` e `HUGGINGFACE_API_TOKEN` configuradas como variável de ambiente no provedor do backend (nunca commitadas no repositório) — ver ticket 08, o provedor de visão deixou de ser o Google Vision.
 
 ---
 

@@ -1,6 +1,9 @@
 import os
 
+from dotenv import load_dotenv
 from pydantic import BaseModel, Field
+
+load_dotenv()
 
 
 class Settings(BaseModel):
@@ -10,9 +13,9 @@ class Settings(BaseModel):
     # CORS (por enquanto vamos deixar no main.py, mas já guardamos aqui se quiser centralizar depois)
     # allowed_origins: list[str] = Field(default_factory=lambda: ["http://localhost:5173"])
 
-    # Google Vision
-    google_project_id: str | None = Field(default=os.getenv("GOOGLE_PROJECT_ID"))
-    google_credentials_path: str | None = Field(default=os.getenv("GOOGLE_APPLICATION_CREDENTIALS"))
+    # Provedores de visão (gratuitos, sem cartão de crédito)
+    ocr_space_api_key: str | None = Field(default=os.getenv("OCR_SPACE_API_KEY"))
+    huggingface_api_token: str | None = Field(default=os.getenv("HUGGINGFACE_API_TOKEN"))
 
     # Limites para o /analyze (boas práticas mesmo em protótipo)
     max_upload_bytes: int = Field(default=int(os.getenv("MAX_UPLOAD_BYTES", "5000000")))  # 5MB

@@ -14,7 +14,7 @@ class AnalyzeMeta(BaseModel):
 class DetectedObject(BaseModel):
     """Objeto localizado na imagem, com posição na grade 3x3 para áudio."""
 
-    name: str = Field(description="Nome original (inglês) retornado pelo Vision")
+    name: str = Field(description="Nome original (inglês) retornado pelo provedor de visão")
     name_pt: str = Field(description="Nome traduzido para pt-BR")
     score: float = Field(ge=0.0, le=1.0)
     position: str = Field(
@@ -37,5 +37,5 @@ class AnalyzeResponse(BaseModel):
     meta: AnalyzeMeta | None = None
     raw: dict[str, Any] | None = Field(
         default=None,
-        description="Resposta crua do provedor (Google Vision) para debug",
+        description="Resposta crua dos provedores (OCR.space + Hugging Face) para debug",
     )

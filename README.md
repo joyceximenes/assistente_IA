@@ -12,7 +12,7 @@ backend/          API FastAPI (Python) — gerenciada com uv
   src/
     api/          rotas, schemas Pydantic e helpers de erro
     core/         configuração (env) e logging
-    services/     pré-processamento de imagem, Google Vision, regra de decisão
+    services/     pré-processamento de imagem, provedores de visão (OCR.space + Hugging Face), regra de decisão
   pyproject.toml  dependências e entrypoint da CLI do FastAPI
 frontend/         PWA React + TypeScript + Vite
   src/
@@ -24,7 +24,7 @@ frontend/         PWA React + TypeScript + Vite
 
 - [uv](https://docs.astral.sh/uv/) para o backend (Python ≥ 3.11)
 - Node.js para o frontend
-- Credenciais do Google Cloud Vision em `backend/credentials/service-account.json`
+- Chaves grátis do OCR.space e da Hugging Face Inference API (veja `backend/.env`)
 
 ## Rodando em desenvolvimento
 
@@ -77,6 +77,43 @@ Frontend (dentro de `frontend/`):
 npm run build   # gera dist/
 ```
 
+## Testes
+
+Nenhum teste chama o OCR.space ou a Hugging Face de verdade — as APIs externas
+são substituídas por um dublê. Não é preciso chave nem internet para rodar a suíte.
+
+**Backend** (dentro de `backend/`):
+
+```bash
+uv run poe test       # pytest -v, lista teste por teste
+uv run poe coverage   # cobertura, com as linhas não executadas na coluna Missing
+uv run poe lint       # ruff
+```
+
+As tarefas estão em `[tool.poe.tasks]` no `pyproject.toml`. Também dá para
+chamar o pytest direto — `uv run pytest tests/test_decision.py` para rodar só um
+arquivo, ou `-k nome_do_teste` para filtrar por nome.
+
+A coluna `Missing` do relatório de cobertura traz as linhas que nenhum teste
+executou. Ela aponta o que ainda não foi olhado, não a qualidade do que já
+existe: linha executada não é linha verificada.
+
+**Frontend** (dentro de `frontend/`):
+
+```bash
+npm test            # vitest, uma passada
+npm run test:watch  # re-roda ao salvar
+npm run test:coverage
+npm run lint        # biome
+```
+
+Os testes do frontend fixam `VITE_API_BASE_URL` em vez de ler o `.env`, que
+localmente aponta para o IP da máquina na rede — assim a suíte vale em qualquer
+máquina e na CI.
+
+`Camera.tsx` e `Home.tsx` ficam fora da cobertura: dependem de `getUserMedia`,
+que o jsdom não implementa. São caso para teste em dispositivo real.
+
 ## Configuração
 
 **`backend/.env`**
@@ -84,11 +121,11 @@ npm run build   # gera dist/
 | Variável | Padrão | Descrição |
 |---|---|---|
 | `ENV` | `dev` | Ambiente |
-| `GOOGLE_PROJECT_ID` | — | Projeto no Google Cloud |
-| `GOOGLE_APPLICATION_CREDENTIALS` | — | Caminho do JSON da service account |
+| `OCR_SPACE_API_KEY` | — | Chave grátis do OCR.space (ocr.space/ocrapi/freekey) |
+| `HUGGINGFACE_API_TOKEN` | — | Token grátis da Hugging Face (huggingface.co/settings/tokens) |
 | `MAX_UPLOAD_BYTES` | `5000000` | Tamanho máximo do upload (5 MB) |
 | `MAX_IMAGE_SIDE_PX` | `1280` | Maior lado após o redimensionamento |
-| `RETURN_RAW_PROVIDER_RESPONSE` | `false` | Inclui a resposta crua do Vision (debug) |
+| `RETURN_RAW_PROVIDER_RESPONSE` | `false` | Inclui a resposta crua dos provedores (debug) |
 
 **`frontend/.env`**
 
