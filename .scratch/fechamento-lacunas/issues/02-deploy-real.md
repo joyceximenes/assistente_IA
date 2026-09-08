@@ -1,16 +1,22 @@
-# 02 — Deploy real: frontend no Vercel + backend no Railway/Render
+# 02 — Deploy real: frontend no Vercel + backend no Render
 
-**What to build:** o AVIA acessível publicamente via HTTPS — frontend hospedado no Vercel, backend hospedado no Railway ou Render, comunicando entre si em produção sem depender de IP local de rede doméstica.
+**What to build:** o AVIA acessível publicamente via HTTPS — frontend hospedado no Vercel, backend hospedado no Render, comunicando entre si em produção sem depender de IP local de rede doméstica.
 
-**Blocked by:** None — can start immediately
+**Blocked by:** None
 
-**Status:** ready-for-agent
+**Status:** in-progress — repo preparado, execução guiada por wizard (`scripts/deploy-wizard.sh`)
 
+## Preparado em 2026-09-08
+
+- [x] Plataforma do backend decidida: **Render** (free tier sem cartão; trade-off aceito é o "sleep" após ociosidade).
+- [x] CORS deixou de ser hardcoded em `main.py` — agora vem de `CORS_ALLOWED_ORIGINS` (`config.py`), lista separada por vírgula, configurável via variável de ambiente no provedor sem precisar editar código/redeployar.
+- [x] `render.yaml` criado na raiz do repo (Render Blueprint) — `rootDir: backend`, build via `uv sync`, start via `uv run fastapi run --port $PORT`, com `OCR_SPACE_API_KEY`/`HUGGINGFACE_API_TOKEN` marcadas `sync: false` (Render pede o valor no dashboard, nunca vai pro repo).
+- [x] Checado `frontend/.env`: a chave `VITE_API_BASE_URL` duplicada mencionada anteriormente não existe mais no arquivo atual — item já resolvido, não é mais pendência.
 - [ ] Frontend publicado no Vercel, acessível via HTTPS.
-- [ ] Backend publicado no Railway ou Render, acessível via HTTPS.
-- [ ] CORS do backend liberando o domínio de produção do frontend (além de manter localhost para desenvolvimento).
-- [ ] `frontend/.env` de produção aponta para a URL do backend publicado; chave `VITE_API_BASE_URL` duplicada removida.
-- [ ] `OCR_SPACE_API_KEY` e `HUGGINGFACE_API_TOKEN` configuradas como variável de ambiente no provedor do backend (nunca commitadas no repositório) — ver ticket 08, o provedor de visão deixou de ser o Google Vision.
+- [ ] Backend publicado no Render, acessível via HTTPS.
+- [ ] `VITE_API_BASE_URL` (Vercel) apontando para a URL do backend publicado.
+- [ ] `CORS_ALLOWED_ORIGINS` (Render) atualizada com o domínio do Vercel.
+- [ ] `OCR_SPACE_API_KEY` e `HUGGINGFACE_API_TOKEN` coladas no dashboard do Render.
 
 ---
 

@@ -123,6 +123,7 @@ que o jsdom não implementa. São caso para teste em dispositivo real.
 | `ENV` | `dev` | Ambiente |
 | `OCR_SPACE_API_KEY` | — | Chave grátis do OCR.space (ocr.space/ocrapi/freekey) |
 | `HUGGINGFACE_API_TOKEN` | — | Token grátis da Hugging Face (huggingface.co/settings/tokens) |
+| `CORS_ALLOWED_ORIGINS` | `http://localhost:5173,http://127.0.0.1:5173` | Origens liberadas no CORS, separadas por vírgula. Em produção, inclua o domínio do frontend publicado |
 | `MAX_UPLOAD_BYTES` | `5000000` | Tamanho máximo do upload (5 MB) |
 | `MAX_IMAGE_SIDE_PX` | `1280` | Maior lado após o redimensionamento |
 | `RETURN_RAW_PROVIDER_RESPONSE` | `false` | Inclui a resposta crua dos provedores (debug) |

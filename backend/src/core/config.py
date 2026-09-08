@@ -10,8 +10,17 @@ class Settings(BaseModel):
     # Ambiente
     env: str = Field(default=os.getenv("ENV", "dev"))
 
-    # CORS (por enquanto vamos deixar no main.py, mas já guardamos aqui se quiser centralizar depois)
-    # allowed_origins: list[str] = Field(default_factory=lambda: ["http://localhost:5173"])
+    # CORS — lista separada por vírgula. Padrão cobre só o dev local; em produção
+    # a variável de ambiente do provedor deve incluir o domínio do frontend publicado.
+    cors_allowed_origins: list[str] = Field(
+        default_factory=lambda: [
+            origin.strip()
+            for origin in os.getenv(
+                "CORS_ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173"
+            ).split(",")
+            if origin.strip()
+        ]
+    )
 
     # Provedores de visão (gratuitos, sem cartão de crédito)
     ocr_space_api_key: str | None = Field(default=os.getenv("OCR_SPACE_API_KEY"))

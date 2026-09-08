@@ -9,7 +9,7 @@ export function getApiBaseUrl() {
   return import.meta.env?.VITE_API_BASE_URL || DEFAULT_BASE_URL;
 }
 
-// Envia a imagem para o backend (Google Vision). Requer conexão com a internet.
+// Envia a imagem para o backend. Requer conexão com a internet.
 export async function analyzeImage(blob: Blob): Promise<AnalyzeResponse> {
   if (!navigator.onLine) {
     return {

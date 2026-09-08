@@ -4,7 +4,7 @@
 
 **Blocked by:** None
 
-**Status:** in-progress — código migrado e testado, faltam as chaves reais
+**Status:** done — código migrado, chaves reais configuradas, testado ponta a ponta
 
 ## Feito em 2026-09-04
 
@@ -14,11 +14,13 @@
 - [x] `routes.py`, `schemas.py`, `image_io.py`, `README.md`: referências ao Google Vision atualizadas.
 - [x] Testes reescritos (`tests/test_vision_free.py`) e `tests/test_routes.py` ajustado — 81 testes + `ruff check` passando, sem tocar API real.
 - [x] Bug lateral corrigido: `backend/.env` nunca era carregado (`fastapi dev` não chama `load_dotenv()` sozinho) — `config.py` agora chama `load_dotenv()` e `python-dotenv` virou dependência direta. Antes disso, nenhuma variável do `.env` valia de fato, nem no tempo do Google Vision.
+- [x] Chaves reais geradas e coladas em `backend/.env` (OCR_SPACE_API_KEY, HUGGINGFACE_API_TOKEN).
+- [x] **Bug descoberto e corrigido no teste real**: a URL da Hugging Face usada (`api-inference.huggingface.co`) estava descontinuada — a API migrou para `router.huggingface.co/hf-inference/models/...`. Faltava também o header `Content-Type: image/jpeg`, sem o qual a API rejeitava com 400.
+- [x] Teste ponta a ponta com as APIs reais: OCR.space leu texto corretamente; Hugging Face detectou pessoa (99.9%), ônibus (99.9%), hidrante etc. em foto real — pipeline completo validado.
+- [x] Resquícios do Google Vision removidos: pasta `backend/credentials/` (não usada mais) e regras correspondentes do `.gitignore`; comentários em `decision.py`, `test_decision.py`, `test_image_io.py`, `test_routes.py` que ainda citavam o Vision como provedor atual.
+- [x] Service account real do Google Cloud (`avia-111@project-063f070b-d0d1-4ea3-8b2.iam.gserviceaccount.com`) deletada via `gcloud` — nunca chegou a ter billing ativo, sem custo associado.
+- [x] Commits `abf9968` e `d17fa31` enviados para `origin/main`.
 
 ## Pendente
 
-- [ ] Gerar chave grátis do OCR.space (ocr.space/ocrapi/freekey — instantânea, sem cartão) e colar em `backend/.env` como `OCR_SPACE_API_KEY`.
-- [ ] Gerar token grátis da Hugging Face (huggingface.co/settings/tokens, tipo "Read", sem cartão) e colar em `backend/.env` como `HUGGINGFACE_API_TOKEN`.
-- [ ] Rodar o teste ponta a ponta real (como foi feito com o Google Vision antes de travar no billing) para confirmar que as duas APIs respondem como esperado.
-- [ ] Decidir o que fazer com a service account real do Google Cloud criada durante a tentativa anterior e com o mock `backend/credentials/service-account.json` — nenhum dos dois é mais usado pelo código; podem ser removidos/a service account deletada no console.
-- [ ] Ficar de olho no cold start do Hugging Face free tier (primeira chamada ao modelo pode responder 503 por alguns segundos) — já tratado como erro de domínio com mensagem clara, mas pode exigir um retry manual na primeira análise depois de um tempo ocioso.
+- [ ] Ficar de olho no cold start do Hugging Face free tier (primeira chamada ao modelo pode responder 503 por alguns segundos depois de um tempo ocioso) — já tratado como erro de domínio com mensagem clara.
