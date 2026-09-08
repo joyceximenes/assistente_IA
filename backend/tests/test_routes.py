@@ -59,9 +59,9 @@ def jpeg_pequeno() -> bytes:
 def test_rota_analyze_aceita_jpeg_e_devolve_o_contrato(
     client: TestClient, jpeg_pequeno: bytes, monkeypatch: pytest.MonkeyPatch
 ):
-    # Arrange — o Vision é substituído por um retorno fixo. Sem isso o teste
-    # bateria na API do Google: precisaria de credenciais, custaria dinheiro e
-    # o resultado mudaria a cada execução.
+    # Arrange — os provedores de visão são substituídos por um retorno fixo.
+    # Sem isso o teste bateria nas APIs externas: precisaria de chaves e o
+    # resultado mudaria a cada execução.
     def vision_falso(_: bytes) -> dict:
         return {
             "text_annotations": [],

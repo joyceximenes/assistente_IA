@@ -13,13 +13,5 @@ dist/
 # Variáveis de ambiente
 .env
 
-# Credenciais sensíveis — nunca versionar.
-# Ignora o conteúdo da pasta, mas mantém o .gitkeep para quem clonar
-# receber a estrutura e saber onde colocar a service account.
-backend/credentials/*
-!backend/credentials/.gitkeep
-*.json.bak
-service-account*.json
-
 # relatório de cobertura dos testes (gerado por vitest --coverage)
 coverage/

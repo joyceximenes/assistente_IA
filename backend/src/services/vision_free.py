@@ -9,7 +9,7 @@ from PIL import Image
 from src.core.config import settings
 
 OCR_SPACE_URL = "https://api.ocr.space/parse/image"
-HUGGINGFACE_OBJECT_DETECTION_URL = "https://api-inference.huggingface.co/models/facebook/detr-resnet-50"
+HUGGINGFACE_OBJECT_DETECTION_URL = "https://router.huggingface.co/hf-inference/models/facebook/detr-resnet-50"
 
 _TIMEOUT = httpx.Timeout(30.0)
 
@@ -87,7 +87,10 @@ def _huggingface_object_detection(
     try:
         response = httpx.post(
             HUGGINGFACE_OBJECT_DETECTION_URL,
-            headers={"Authorization": f"Bearer {settings.huggingface_api_token}"},
+            headers={
+                "Authorization": f"Bearer {settings.huggingface_api_token}",
+                "Content-Type": "image/jpeg",
+            },
             content=image_bytes,
             timeout=_TIMEOUT,
         )

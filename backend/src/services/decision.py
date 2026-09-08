@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from typing import Any
 
-# O Google Vision retorna nomes de objetos em inglês.
+# O provedor de detecção de objetos retorna nomes em inglês.
 # Dicionário de tradução para os objetos mais comuns no contexto do app
 # (rótulos, embalagens, ambientes domésticos). Fallback: nome original.
 OBJECT_NAMES_PT: dict[str, str] = {

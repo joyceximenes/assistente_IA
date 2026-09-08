@@ -1,6 +1,6 @@
 """
 Testes de src/services/image_io.py — a etapa que prepara a foto antes de ela
-sair para o Google Vision: valida tamanho, padroniza cor, reduz resolução e
+sair para os provedores de visão: valida tamanho, padroniza cor, reduz resolução e
 reencoda para um formato único.
 """
 

@@ -80,7 +80,7 @@ def test_traduz_nome_objeto_para_pt_br():
 # ---------------------------------------------------------------------------
 # _extract_objects — linhas 146-166
 #
-# Recebe o dicionário que veio do vision_google.py e devolve a lista de
+# Recebe o dicionário que veio do vision_free.py e devolve a lista de
 # DetectedObjectInfo já traduzida, posicionada e ordenada.
 # ---------------------------------------------------------------------------
 
