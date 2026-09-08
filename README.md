@@ -58,7 +58,7 @@ de rede aparece no terminal — use-o para abrir no celular.
 
 1. Confira o IP da máquina na rede local (`ipconfig` no Windows).
 2. Ajuste `VITE_API_BASE_URL` em `frontend/.env` para esse IP.
-3. Libere esse endereço no CORS, em `backend/src/main.py`.
+3. Libere esse endereço em `CORS_ALLOWED_ORIGINS`, em `backend/.env`.
 
 > Instalar a PWA e usar a câmera exige HTTPS — em `http://` de rede local o
 > navegador bloqueia. Isso só funciona plenamente após o deploy.
@@ -76,6 +76,19 @@ Frontend (dentro de `frontend/`):
 ```bash
 npm run build   # gera dist/
 ```
+
+## Deploy
+
+Frontend no Vercel (estático), backend no Render (Blueprint em `render.yaml`
+na raiz do repo). Roteiro guiado passo a passo:
+
+```bash
+./scripts/deploy-wizard.sh
+```
+
+O script abre os dashboards certos, diz exatamente o que clicar/colar, e
+guarda as URLs resultantes em `frontend/.env`. Pode parar com Ctrl-C e rodar
+de novo depois — ele lembra o que já foi preenchido.
 
 ## Testes
 
