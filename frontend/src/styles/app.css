@@ -5,7 +5,10 @@
   --border: #1f2937;
   --border-2: #374151;
   --text: #e5e7eb;
-  --primary: #0047e0;
+  /* #0047e0 tinha só 2,68:1 contra --bg (abaixo do mínimo de 3:1 do WCAG
+     1.4.11 para contorno de componente de UI). Este tom mantém a mesma
+     identidade visual mas chega a ~3,86:1 contra o fundo. */
+  --primary: #3366ee;
   --danger: rgba(185, 28, 28, 0.2);
   --danger-border: rgb(220, 38, 38);
 }
@@ -246,8 +249,8 @@ body {
   margin-top: -6px;
   margin-bottom: 8px;
   box-shadow:
-    0 12px 28px rgba(0, 71, 224, 0.35),
-    0 0 0 6px rgba(0, 71, 224, 0.2);
+    0 12px 28px rgba(51, 102, 238, 0.35),
+    0 0 0 6px rgba(51, 102, 238, 0.2);
 }
 
 .camera-back {
@@ -340,4 +343,18 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+@media (orientation: landscape) {
+  html,
+  body {
+    overflow-y: auto;
+  }
+
+  .app-container,
+  .camera-container {
+    height: auto;
+    min-height: 100dvh;
+    overflow-y: auto;
+  }
 }

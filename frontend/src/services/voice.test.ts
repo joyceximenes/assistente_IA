@@ -32,6 +32,7 @@ function installSpeechSynthesis() {
   cancelCount = 0;
   vi.stubGlobal("SpeechSynthesisUtterance", FakeUtterance);
   vi.stubGlobal("speechSynthesis", {
+    resume: () => {},
     cancel: () => {
       cancelCount++;
     },

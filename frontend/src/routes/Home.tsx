@@ -35,10 +35,22 @@ export default function Home({ onOpenCamera }: Props) {
         return;
       }
 
-      setStatus("Aguardando comando por 5 segundos…");
+      const LISTEN_SECONDS = 5;
+      setStatus(`Aguardando comando… ${LISTEN_SECONDS}s`);
+
+      // Contagem regressiva visual enquanto ouve (acessibilidade: usuário
+      // sabe quanto tempo falta sem depender só do áudio).
+      let secondsLeft = LISTEN_SECONDS;
+      const tickId = window.setInterval(() => {
+        secondsLeft -= 1;
+        if (secondsLeft > 0 && !cancelled) {
+          setStatus(`Aguardando comando… ${secondsLeft}s`);
+        }
+      }, 1000);
 
       // Aguarda comando por 5s. Silêncio/outro = abort.
-      const heard = await listenOnce(5000, controller.signal);
+      const heard = await listenOnce(LISTEN_SECONDS * 1000, controller.signal);
+      window.clearInterval(tickId);
       if (cancelled) return;
 
       if (
@@ -50,11 +62,18 @@ export default function Home({ onOpenCamera }: Props) {
         return;
       }
 
-      setStatus(
+      if (heard?.includes("cancelar")) {
+        setStatus("Cancelado. Toque no botão para iniciar.");
+        await speakAsync("Cancelado.");
+        return;
+      }
+
+      const message =
         heard === null
           ? "Nenhum comando ouvido. Toque no botão para iniciar."
-          : "Comando não reconhecido. Toque no botão para iniciar.",
-      );
+          : "Comando não reconhecido. Toque no botão para iniciar.";
+      setStatus(message);
+      await speakAsync(message);
     }
 
     runOnce();

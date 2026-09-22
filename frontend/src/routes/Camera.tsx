@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { analyzeFrameForGuidance } from "../services/guidance";
 import { vibrateCapture, vibrateError, vibrateReady } from "../services/haptics";
-import { speak, speakThrottled, stopSpeaking } from "../services/voice";
+import { speak, speakAsync, speakThrottled, stopSpeaking } from "../services/voice";
 
 // ou voltar para a tela anterior ou o App vai enviar para analyze
 type Props = {
@@ -21,10 +21,17 @@ export default function Camera({ onBack, onCaptured }: Props) {
   const [hint, setHint] = useState("Centralize o conteúdo no alvo.");
   // estado anterior do guidance, para vibrar só na transição ruim -> bom
   const wasOkRef = useRef(false);
+  // desde quando o enquadramento está "ok" sem interrupção (auto-captura)
+  const okSinceRef = useRef<number | null>(null);
+  // evita disparar a auto-captura mais de uma vez
+  const autoCapturedRef = useRef(false);
+  // referenciado também por stopCamera(), fora do useEffect
+  const intervalIdRef = useRef<number | null>(null);
+
+  const AUTO_CAPTURE_DELAY_MS = 1000;
 
   useEffect(() => {
     let cancelled = false;
-    let intervalId: number | null = null;
 
     async function start() {
       try {
@@ -50,7 +57,7 @@ export default function Camera({ onBack, onCaptured }: Props) {
         setReady(true);
 
         // atualiza a cada 700ms as dicas para o usuário
-        intervalId = window.setInterval(() => {
+        intervalIdRef.current = window.setInterval(() => {
           tryGuidance();
         }, 700);
       } catch {
@@ -89,6 +96,22 @@ export default function Camera({ onBack, onCaptured }: Props) {
       wasOkRef.current = g.ok;
 
       speakThrottled(g.message, 1300); // fala a mensagem em voz alta
+
+      // auto-captura: só dispara depois de ~1s de enquadramento bom
+      // ininterrupto, para não capturar num frame que ficou "ok" só por um
+      // instante (ex.: tremida passando pelo ponto certo).
+      if (g.ok) {
+        if (okSinceRef.current === null) okSinceRef.current = Date.now();
+        if (
+          !autoCapturedRef.current &&
+          Date.now() - okSinceRef.current >= AUTO_CAPTURE_DELAY_MS
+        ) {
+          autoCapturedRef.current = true;
+          capture({ auto: true });
+        }
+      } else {
+        okSinceRef.current = null;
+      }
     }
 
     start();
@@ -96,7 +119,7 @@ export default function Camera({ onBack, onCaptured }: Props) {
     // cancela todos os eventos ao desmontar
     return () => {
       cancelled = true;
-      if (intervalId) window.clearInterval(intervalId);
+      if (intervalIdRef.current) window.clearInterval(intervalIdRef.current);
       stopSpeaking();
       const stream = streamRef.current;
       if (stream)
@@ -108,6 +131,15 @@ export default function Camera({ onBack, onCaptured }: Props) {
   }, []);
 
   function stopCamera() {
+    // para o loop de guidance (senão ele segue dando instrução por voz por
+    // cima da fala "Analisando imagem…" enquanto a tela de câmera ainda
+    // está montada aguardando a resposta do backend)
+    if (intervalIdRef.current) {
+      window.clearInterval(intervalIdRef.current);
+      intervalIdRef.current = null;
+    }
+    stopSpeaking();
+
     const stream = streamRef.current;
     if (stream) {
       stream.getTracks().forEach((t) => {
@@ -117,7 +149,7 @@ export default function Camera({ onBack, onCaptured }: Props) {
     }
   }
 
-  async function capture() {
+  async function capture(opts?: { auto?: boolean }) {
     const video = videoRef.current;
     if (!video) return;
 
@@ -162,6 +194,13 @@ export default function Camera({ onBack, onCaptured }: Props) {
 
     vibrateCapture();
     stopCamera();
+
+    // avisa por voz que a captura automática ocorreu, antes de seguir para
+    // a análise (que troca a fala por "Analisando imagem…" logo em seguida)
+    if (opts?.auto) {
+      await speakAsync("Capturado.");
+    }
+
     onCaptured(blob);
   }
 
@@ -186,7 +225,7 @@ export default function Camera({ onBack, onCaptured }: Props) {
         <button
           type="button"
           className={`btn-primary camera-capture ${!ready ? "btn-disabled" : ""}`}
-          onClick={capture}
+          onClick={() => capture()}
           disabled={!ready}
           aria-label="Capturar imagem"
         >

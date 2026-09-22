@@ -12,6 +12,10 @@ export function analyzeFrameForGuidance(imageData: ImageData): Guidance {
   // Converte para luminância (grayscale) e calcula brilho médio
   const gray = new Float32Array(width * height);
   let brightnessSum = 0;
+  // Conta pixels estourados para pegar reflexo/pontos de luz localizados,
+  // que não erguem a média geral o suficiente para cruzar BRIGHTNESS_HIGH.
+  let overexposedCount = 0;
+  const OVEREXPOSED_LUM = 250;
 
   for (let i = 0; i < width * height; i++) {
     const r = data[i * 4];
@@ -20,9 +24,11 @@ export function analyzeFrameForGuidance(imageData: ImageData): Guidance {
     const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
     gray[i] = lum;
     brightnessSum += lum;
+    if (lum > OVEREXPOSED_LUM) overexposedCount++;
   }
 
   const brightnessScore = brightnessSum / (width * height); // 0–255
+  const overexposedRatio = overexposedCount / (width * height); // 0–1
 
   // Laplacian simples -> blur score ~ variância do laplaciano
   let sum = 0;
@@ -67,6 +73,7 @@ export function analyzeFrameForGuidance(imageData: ImageData): Guidance {
   const BLUR_MIN = 120; // muito baixo => desfocado/tremido
   const EDGE_LOW = 18; // baixo => longe/escuro
   const EDGE_HIGH = 55; // alto demais => muito perto/cortando
+  const OVEREXPOSED_RATIO_HIGH = 0.15; // 15% do frame estourado => reflexo/luz direta
 
   // brilho verificado primeiro (independe de blur/edge)
   if (brightnessScore < BRIGHTNESS_LOW) {
@@ -79,10 +86,23 @@ export function analyzeFrameForGuidance(imageData: ImageData): Guidance {
     };
   }
 
-  if (brightnessScore > BRIGHTNESS_HIGH) {
+  if (brightnessScore > BRIGHTNESS_HIGH || overexposedRatio > OVEREXPOSED_RATIO_HIGH) {
     return {
       ok: false,
       message: "Luz excessiva. Evite reflexos e luz direta.",
+      blurScore,
+      edgeScore,
+      brightnessScore,
+    };
+  }
+
+  // Edge alto demais é checado antes do blur: muito perto do objeto o
+  // celular costuma perder o foco (blur baixo) além de ficar com excesso de
+  // borda — sem essa ordem, o caso "muito perto" nunca chegava a esse ramo.
+  if (edgeScore > EDGE_HIGH) {
+    return {
+      ok: false,
+      message: "Afaste um pouco a câmera.",
       blurScore,
       edgeScore,
       brightnessScore,
@@ -101,16 +121,6 @@ export function analyzeFrameForGuidance(imageData: ImageData): Guidance {
 
   if (edgeScore < EDGE_LOW) {
     return { ok: false, message: "Aproxime a câmera.", blurScore, edgeScore, brightnessScore };
-  }
-
-  if (edgeScore > EDGE_HIGH) {
-    return {
-      ok: false,
-      message: "Afaste um pouco a câmera.",
-      blurScore,
-      edgeScore,
-      brightnessScore,
-    };
   }
 
   return {

@@ -270,10 +270,11 @@ def test_rota_analyze_limita_confidence_acima_de_um(
     assert response.json()["confidence"] == 1.0
 
 
-def test_rota_analyze_limita_score_negativo_dos_objetos(
+def test_rota_analyze_descarta_objeto_com_score_negativo(
     client: TestClient, jpeg_pequeno: bytes, monkeypatch: pytest.MonkeyPatch
 ):
-    # Arrange — score negativo em um objeto localizado.
+    # Arrange — score negativo em um objeto localizado: abaixo do limiar de
+    # confiança (MIN_OBJECT_CONFIDENCE), tratado como ruído do provedor.
     _usar_vision_falso(
         monkeypatch,
         _resposta_vision(
@@ -291,9 +292,11 @@ def test_rota_analyze_limita_score_negativo_dos_objetos(
     # Act
     response = client.post("/analyze", files=arquivo)
 
-    # Assert — cada objeto da lista também passa pelo clamp.
+    # Assert — decision.py descarta o objeto de baixa confiança antes mesmo
+    # de chegar ao clamp da rota; sem outro sinal, a decisão cai em unknown.
     assert response.status_code == 200
-    assert response.json()["objects"][0]["score"] == 0.0
+    assert response.json()["objects"] == []
+    assert response.json()["type"] == "unknown"
 
 
 # --- o campo raw é controlado por configuração --------------------------------

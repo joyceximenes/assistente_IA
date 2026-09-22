@@ -166,6 +166,11 @@ def _extract_objects(vision_data: dict[str, Any]) -> list[DetectedObjectInfo]:
     return detected
 
 
+# Abaixo disso, o detector de objetos (DETR/COCO) tende a "alucinar"
+# caixas em áreas lisas/vazias — ruído do modelo, não objeto real.
+MIN_OBJECT_CONFIDENCE = 0.7
+
+
 def decide_text_or_object(vision_data: dict[str, Any]) -> Decision:
     """
     Aplica regra de decisão:
@@ -176,7 +181,7 @@ def decide_text_or_object(vision_data: dict[str, Any]) -> Decision:
     """
     texts = vision_data.get("text_annotations", [])
     labels = vision_data.get("labels", [])
-    objects = _extract_objects(vision_data)
+    objects = [o for o in _extract_objects(vision_data) if o.score >= MIN_OBJECT_CONFIDENCE]
 
     # OCR: o primeiro item costuma ser o texto completo
     if texts and (texts[0].get("description") or "").strip():

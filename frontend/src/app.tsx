@@ -3,6 +3,7 @@ import Camera from "./routes/Camera";
 import Home from "./routes/Home";
 import Result from "./routes/Result";
 import { analyzeImage } from "./services/api";
+import { startProcessingLoop, stopProcessingLoop } from "./services/sound";
 import { speak } from "./services/voice";
 
 // navegação, nessa ordem. useState
@@ -79,6 +80,17 @@ export default function App() {
         document.title = baseTitle;
     }
   }, [screen]);
+
+  // som contínuo e discreto durante a análise, para indicar que o processo
+  // está rodando (sem depender só do texto/fala inicial "Analisando…")
+  useEffect(() => {
+    if (isAnalyzing) {
+      startProcessingLoop();
+    } else {
+      stopProcessingLoop();
+    }
+    return () => stopProcessingLoop();
+  }, [isAnalyzing]);
 
   async function handleCaptured(blob: Blob) {
     /* trata a imagem capturada na câmera */

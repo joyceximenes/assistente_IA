@@ -27,6 +27,11 @@ interface SpeechRecognitionWindow extends Window {
 export function speak(text: string, opts?: { rate?: number; pitch?: number }) {
   if (!("speechSynthesis" in window)) return;
 
+  // Diálogos nativos (ex.: permissão de câmera) tiram o foco da página e
+  // deixam o motor de síntese "travado" em pausa no Chrome/Android — sem
+  // isso, speak() é ignorado silenciosamente depois desses diálogos.
+  window.speechSynthesis.resume();
+
   // Cancela falas anteriores para não acumular
   window.speechSynthesis.cancel();
 
@@ -44,6 +49,8 @@ export function speakAsync(text: string, opts?: { rate?: number; pitch?: number 
   return new Promise((resolve) => {
     if (!("speechSynthesis" in window)) return resolve();
 
+    // ver comentário equivalente em speak()
+    window.speechSynthesis.resume();
     window.speechSynthesis.cancel();
 
     const u = new SpeechSynthesisUtterance(text);
