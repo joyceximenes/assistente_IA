@@ -15,3 +15,10 @@ dist/
 
 # relatório de cobertura dos testes (gerado por vitest --coverage)
 coverage/
+
+# dataset VizWiz — insumo rebaixável da fonte pública; só o manifesto derivado é versionado
+DATASET/images/
+DATASET/annotations_desafio/
+DATASET/*.csv
+DATASET/*.zip
+!DATASET/manifest.csv
