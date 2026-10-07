@@ -189,7 +189,12 @@ def decide_text_or_object(vision_data: dict[str, Any]) -> Decision:
         return Decision(
             type="text",
             result=text,
-            confidence=0.9,  # heurística simples para TCC
+            # Fixo: o OCR.space (mesmo com OCREngine=2 e overlay) não devolve
+            # confiança por palavra ou por linha, só texto e posição —
+            # confirmado na documentação oficial da API. Sem confiança real do
+            # provedor para usar aqui. Alternativa (heurística substituta a
+            # partir de outros sinais) fica pendente, ver vault/quadro.
+            confidence=0.9,
             objects=objects,
         )
 
