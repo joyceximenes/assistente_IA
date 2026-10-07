@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { analyzeFrameForGuidance } from "../services/guidance";
 import { vibrateCapture, vibrateError, vibrateReady } from "../services/haptics";
 import { speak, speakAsync, speakThrottled, stopSpeaking } from "../services/voice";
@@ -29,6 +29,84 @@ export default function Camera({ onBack, onCaptured }: Props) {
   const intervalIdRef = useRef<number | null>(null);
 
   const AUTO_CAPTURE_DELAY_MS = 1000;
+
+  const stopCamera = useCallback(() => {
+    // para o loop de guidance (senão ele segue dando instrução por voz por
+    // cima da fala "Analisando imagem…" enquanto a tela de câmera ainda
+    // está montada aguardando a resposta do backend)
+    if (intervalIdRef.current) {
+      window.clearInterval(intervalIdRef.current);
+      intervalIdRef.current = null;
+    }
+    stopSpeaking();
+
+    const stream = streamRef.current;
+    if (stream) {
+      stream.getTracks().forEach((t) => {
+        t.stop();
+      });
+      streamRef.current = null;
+    }
+  }, []);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: onCaptured is a new function from app.tsx on every render; App doesn't re-render while the camera is mounted, so leaving it out doesn't change behavior and avoids invalidating `capture`'s stable identity.
+  const capture = useCallback(
+    async (opts?: { auto?: boolean }) => {
+      const video = videoRef.current;
+      if (!video) return;
+
+      // valida as dimensões do vídeo
+      const width = video.videoWidth;
+      const height = video.videoHeight;
+
+      if (!width || !height) {
+        const msg = "Câmera ainda não está pronta para captura.";
+        setError(msg);
+        speak(msg);
+        return;
+      }
+
+      // cria um canvas temporário para capturar o frame
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        const msg = "Falha ao preparar captura.";
+        setError(msg);
+        speak(msg);
+        return;
+      }
+
+      // cria a imagem no canvas
+      ctx.drawImage(video, 0, 0, width, height);
+
+      // converte o conteúdo do canvas para um blob JPEG
+      const blob: Blob | null = await new Promise((resolve) =>
+        canvas.toBlob(resolve, "image/jpeg", 0.9),
+      );
+
+      if (!blob) {
+        const msg = "Falha ao capturar imagem.";
+        setError(msg);
+        speak(msg);
+        return;
+      }
+
+      vibrateCapture();
+      stopCamera();
+
+      // avisa por voz que a captura automática ocorreu, antes de seguir para
+      // a análise (que troca a fala por "Analisando imagem…" logo em seguida)
+      if (opts?.auto) {
+        await speakAsync("Capturado.");
+      }
+
+      onCaptured(blob);
+    },
+    [stopCamera],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -102,10 +180,7 @@ export default function Camera({ onBack, onCaptured }: Props) {
       // instante (ex.: tremida passando pelo ponto certo).
       if (g.ok) {
         if (okSinceRef.current === null) okSinceRef.current = Date.now();
-        if (
-          !autoCapturedRef.current &&
-          Date.now() - okSinceRef.current >= AUTO_CAPTURE_DELAY_MS
-        ) {
+        if (!autoCapturedRef.current && Date.now() - okSinceRef.current >= AUTO_CAPTURE_DELAY_MS) {
           autoCapturedRef.current = true;
           capture({ auto: true });
         }
@@ -128,81 +203,7 @@ export default function Camera({ onBack, onCaptured }: Props) {
         });
       streamRef.current = null;
     };
-  }, []);
-
-  function stopCamera() {
-    // para o loop de guidance (senão ele segue dando instrução por voz por
-    // cima da fala "Analisando imagem…" enquanto a tela de câmera ainda
-    // está montada aguardando a resposta do backend)
-    if (intervalIdRef.current) {
-      window.clearInterval(intervalIdRef.current);
-      intervalIdRef.current = null;
-    }
-    stopSpeaking();
-
-    const stream = streamRef.current;
-    if (stream) {
-      stream.getTracks().forEach((t) => {
-        t.stop();
-      });
-      streamRef.current = null;
-    }
-  }
-
-  async function capture(opts?: { auto?: boolean }) {
-    const video = videoRef.current;
-    if (!video) return;
-
-    // valida as dimensões do vídeo
-    const width = video.videoWidth;
-    const height = video.videoHeight;
-
-    if (!width || !height) {
-      const msg = "Câmera ainda não está pronta para captura.";
-      setError(msg);
-      speak(msg);
-      return;
-    }
-
-    // cria um canvas temporário para capturar o frame
-    const canvas = document.createElement("canvas");
-    canvas.width = width;
-    canvas.height = height;
-
-    const ctx = canvas.getContext("2d");
-    if (!ctx) {
-      const msg = "Falha ao preparar captura.";
-      setError(msg);
-      speak(msg);
-      return;
-    }
-
-    // cria a imagem no canvas
-    ctx.drawImage(video, 0, 0, width, height);
-
-    // converte o conteúdo do canvas para um blob JPEG
-    const blob: Blob | null = await new Promise((resolve) =>
-      canvas.toBlob(resolve, "image/jpeg", 0.9),
-    );
-
-    if (!blob) {
-      const msg = "Falha ao capturar imagem.";
-      setError(msg);
-      speak(msg);
-      return;
-    }
-
-    vibrateCapture();
-    stopCamera();
-
-    // avisa por voz que a captura automática ocorreu, antes de seguir para
-    // a análise (que troca a fala por "Analisando imagem…" logo em seguida)
-    if (opts?.auto) {
-      await speakAsync("Capturado.");
-    }
-
-    onCaptured(blob);
-  }
+  }, [capture]);
 
   return (
     <div className="camera-container">
