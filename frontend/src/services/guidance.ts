@@ -4,6 +4,7 @@ export type Guidance = {
   blurScore: number;
   edgeScore: number;
   brightnessScore: number;
+  overexposedRatio: number;
 };
 
 export function analyzeFrameForGuidance(imageData: ImageData): Guidance {
@@ -83,6 +84,7 @@ export function analyzeFrameForGuidance(imageData: ImageData): Guidance {
       blurScore,
       edgeScore,
       brightnessScore,
+      overexposedRatio,
     };
   }
 
@@ -93,6 +95,7 @@ export function analyzeFrameForGuidance(imageData: ImageData): Guidance {
       blurScore,
       edgeScore,
       brightnessScore,
+      overexposedRatio,
     };
   }
 
@@ -106,6 +109,7 @@ export function analyzeFrameForGuidance(imageData: ImageData): Guidance {
       blurScore,
       edgeScore,
       brightnessScore,
+      overexposedRatio,
     };
   }
 
@@ -116,11 +120,19 @@ export function analyzeFrameForGuidance(imageData: ImageData): Guidance {
       blurScore,
       edgeScore,
       brightnessScore,
+      overexposedRatio,
     };
   }
 
   if (edgeScore < EDGE_LOW) {
-    return { ok: false, message: "Aproxime a câmera.", blurScore, edgeScore, brightnessScore };
+    return {
+      ok: false,
+      message: "Aproxime a câmera.",
+      blurScore,
+      edgeScore,
+      brightnessScore,
+      overexposedRatio,
+    };
   }
 
   return {
@@ -129,5 +141,6 @@ export function analyzeFrameForGuidance(imageData: ImageData): Guidance {
     blurScore,
     edgeScore,
     brightnessScore,
+    overexposedRatio,
   };
 }

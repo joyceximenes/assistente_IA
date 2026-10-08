@@ -108,7 +108,7 @@ describe("analyzeFrameForGuidance", () => {
   });
 
   describe("contrato de retorno", () => {
-    it("devolve sempre os três scores, inclusive quando reprova o frame", () => {
+    it("devolve sempre os quatro scores, inclusive quando reprova o frame", () => {
       const g = analyzeFrameForGuidance(uniform(10));
 
       expect(g).toEqual({
@@ -117,6 +117,7 @@ describe("analyzeFrameForGuidance", () => {
         blurScore: expect.any(Number),
         edgeScore: expect.any(Number),
         brightnessScore: expect.any(Number),
+        overexposedRatio: expect.any(Number),
       });
     });
 
