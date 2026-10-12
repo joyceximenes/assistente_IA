@@ -28,7 +28,7 @@ const EVALUATE_TIMEOUT_MS = 15_000;
 // sem erro, sem uso de CPU, depois de ~10 mil imagens na mesma página).
 const PAGE_RECYCLE_EVERY = 2000;
 
-// --limit=N processa só as N primeiras linhas (depuração rápida antes da
+// --limit=N processa no máximo N imagens novas (depuração rápida antes da
 // rodada completa, que leva bem mais tempo nas 31 mil imagens).
 const limitArg = process.argv.find((arg) => arg.startsWith("--limit="));
 const LIMIT = limitArg ? Number(limitArg.split("=")[1]) : Infinity;
@@ -50,16 +50,33 @@ async function* readManifestRows() {
   }
 }
 
-// Conta quantas linhas de dados já existem num CSV de saída de uma rodada
-// anterior, interrompida — permite retomar em vez de reprocessar do zero.
-async function countExistingRows(filePath) {
-  if (!existsSync(filePath)) return 0;
+// Retoma por chave (caminho), não por contagem de linhas: imagens que falham
+// não são escritas, então "N linhas no CSV" não significa "as N primeiras do
+// manifesto". Contar linhas duplicou 4 imagens e pulou outras 4 (07-08/10).
+async function loadDoneImages(filePath) {
+  const done = new Set();
+  if (!existsSync(filePath)) return done;
+  const expectedFields = OUTPUT_HEADER.trim().split(",").length;
   const rl = createInterface({ input: createReadStream(filePath, "utf-8") });
-  let lines = 0;
+  let isHeader = true;
+  let malformed = 0;
   for await (const line of rl) {
-    if (line.trim()) lines++;
+    if (isHeader) {
+      isHeader = false;
+      continue;
+    }
+    if (!line.trim()) continue;
+    const fields = line.split(",");
+    if (fields.length !== expectedFields) {
+      malformed++;
+      continue;
+    }
+    done.add(fields[1]);
   }
-  return Math.max(0, lines - 1); // -1 pelo cabeçalho
+  if (malformed > 0) {
+    throw new Error(`${malformed} linha(s) incompleta(s) em ${filePath}; remova-as antes de retomar.`);
+  }
+  return done;
 }
 
 async function openHarnessPage(browser, port) {
@@ -91,20 +108,17 @@ async function main() {
   const browser = await chromium.launch();
   let page = await openHarnessPage(browser, port);
 
-  const alreadyDone = await countExistingRows(OUTPUT_PATH);
-  const out = createWriteStream(OUTPUT_PATH, { encoding: "utf-8", flags: alreadyDone > 0 ? "a" : "w" });
-  if (alreadyDone === 0) out.write(OUTPUT_HEADER);
-  else console.log(`Retomando: ${alreadyDone} imagens já processadas numa rodada anterior.`);
+  const done = await loadDoneImages(OUTPUT_PATH);
+  const out = createWriteStream(OUTPUT_PATH, { encoding: "utf-8", flags: done.size > 0 ? "a" : "w" });
+  if (done.size === 0) out.write(OUTPUT_HEADER);
+  else console.log(`Retomando: ${done.size} imagens já no CSV; só as que faltam serão processadas.`);
 
-  let count = 0;
+  let count = 0; // imagens novas processadas nesta rodada
   let failed = 0;
   const startedAt = Date.now();
 
   for await (const row of readManifestRows()) {
-    if (count < alreadyDone) {
-      count++;
-      continue;
-    }
+    if (done.has(row.caminho)) continue;
     if (count >= LIMIT) break;
     count++;
     try {
@@ -133,12 +147,10 @@ async function main() {
     } catch (err) {
       failed++;
       console.warn(`[${count}] falhou em ${row.caminho}: ${err.message}`);
-      // Página pode ter travado de verdade (não só uma imagem ruim) —
-      // recicla já, em vez de esperar o próximo ponto agendado.
-      if (err.message.includes("timeout")) {
-        await page.close().catch(() => {});
-        page = await openHarnessPage(browser, port);
-      }
+      // Depois de qualquer falha a página pode estar quebrada (travada, ou
+      // recarregando — visto em duas falhas seguidas em 07/10): recicla já.
+      await page.close().catch(() => {});
+      page = await openHarnessPage(browser, port);
     }
 
     if (count % PAGE_RECYCLE_EVERY === 0) {
@@ -156,7 +168,8 @@ async function main() {
   await browser.close();
   await server.close();
 
-  console.log(`Concluído: ${count} imagens, ${failed} falhas. Saída: ${OUTPUT_PATH}`);
+  console.log(`Concluído: ${count} imagens novas, ${failed} falhas. Saída: ${OUTPUT_PATH}`);
+  if (failed > 0) console.log("Rode de novo: as que falharam não estão no CSV e serão tentadas outra vez.");
 }
 
 main();
