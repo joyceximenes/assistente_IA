@@ -69,12 +69,16 @@ export function analyzeFrameForGuidance(imageData: ImageData): Guidance {
   const edgeScore = edgeSum / Math.max(1, count); // maior = mais detalhe/borda
 
   // thresholds empiricamente razoáveis para frames pequenos (240px)
+  // BRIGHTNESS_LOW e BLUR_MIN foram conferidos no Sprint 5 (F0,5 no treino do VizWiz):
+  // o corte ótimo ficou perto do chute (~34 e ~124) e dentro da margem de erro, então foram mantidos.
   const BRIGHTNESS_LOW = 30; // muito escuro => ambiente sem luz
   const BRIGHTNESS_HIGH = 240; // saturado => luz excessiva/reflexo
   const BLUR_MIN = 120; // muito baixo => desfocado/tremido
   const EDGE_LOW = 18; // baixo => longe/escuro
   const EDGE_HIGH = 55; // alto demais => muito perto/cortando
-  const OVEREXPOSED_RATIO_HIGH = 0.15; // 15% do frame estourado => reflexo/luz direta
+  // 22% do frame estourado => reflexo/luz direta. Calibrado no Sprint 5 (F0,5 no treino do
+  // VizWiz; antes era 0,15): na validação, precisão 48% -> 64% e revocação 29% -> 21%.
+  const OVEREXPOSED_RATIO_HIGH = 0.22;
 
   // brilho verificado primeiro (independe de blur/edge)
   if (brightnessScore < BRIGHTNESS_LOW) {

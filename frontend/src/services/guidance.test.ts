@@ -54,6 +54,26 @@ describe("analyzeFrameForGuidance", () => {
       expect(g.message).toMatch(/luz excessiva/i);
     });
 
+    it("avisa de luz excessiva quando muitos pixels estouram, mesmo com brilho médio normal", () => {
+      // 10 das 32 linhas estouradas (31%) e o resto em 120: a média fica em ~162, abaixo de
+      // BRIGHTNESS_HIGH, então só a regra do overexposedRatio pode pegar este frame
+      const g = analyzeFrameForGuidance(frame((_x, y) => (y < 10 ? 255 : 120)));
+
+      expect(g.overexposedRatio).toBeGreaterThan(0.22);
+      expect(g.brightnessScore).toBeLessThan(240);
+      expect(g.ok).toBe(false);
+      expect(g.message).toMatch(/luz excessiva/i);
+    });
+
+    it("não reclama de luz quando os pixels estourados ficam abaixo do corte (19%)", () => {
+      // 6 das 32 linhas estouradas (19%): o corte antigo (0,15) pegaria, o atual (0,22) não
+      const g = analyzeFrameForGuidance(frame((_x, y) => (y < 6 ? 255 : 120)));
+
+      expect(g.overexposedRatio).toBeGreaterThan(0.15);
+      expect(g.overexposedRatio).toBeLessThan(0.22);
+      expect(g.message).not.toMatch(/luz excessiva/i);
+    });
+
     it("checa brilho antes de blur: frame escuro E borrado reclama do escuro", () => {
       // uniform(10) também tem blurScore 0, mas o brilho é verificado primeiro
       const g = analyzeFrameForGuidance(uniform(10));
