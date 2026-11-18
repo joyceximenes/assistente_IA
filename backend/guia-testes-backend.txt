@@ -1,0 +1,234 @@
+﻿
+
+A ORDEM DE ATAQUE
+-------------------------------------------------------------------------------
+
+  1. decision.py — grid_position_label, translate_object_name
+     Natureza: pura
+     Precisa de mock? NÃO
+
+  2. decision.py — decide_text_or_object
+     Natureza: pura, mas com regra de prioridade
+     Precisa de mock? NÃO
+
+  3. image_io.py — validate_upload_size, _resize_keep_aspect
+     Natureza: pura
+     Precisa de mock? NÃO
+
+  4. image_io.py — normalize_image
+     Natureza: efeito real (Pillow)
+     Precisa de mock? NÃO — gera imagem de verdade
+
+  5. vision_google.py
+     Natureza: rede externa
+     Precisa de mock? SIM — é aqui que mora o "mock do Vision"
+
+  6. routes.py — /analyze
+     Natureza: tudo junto
+     Precisa de mock? SIM — via override do FastAPI
+
+
+PASSO 1 — SETUP 
+-------------------------------------------------------------------------------
+
+Dois comandos, de dentro de backend/:
+
+    uv add --dev pytest pytest-cov
+    mkdir tests
+
+Depois abra o pyproject.toml e acrescente esta seção no final:
+
+    [tool.pytest.ini_options]
+    testpaths = ["tests"]
+    pythonpath = ["."]
+
+
+Rode:
+
+    uv run pytest
+
+Deve dizer "no tests ran". É o resultado certo: significa que a ferramenta
+subiu e não achou teste nenhum ainda.
+
+
+PASSO 2 — SEU PRIMEIRO TESTE
+-------------------------------------------------------------------------------
+
+Crie tests/test_decision.py e mire em grid_position_label.
+
+Assinatura: recebe cx e cy (centro normalizado, de 0 a 1) e devolve uma string.
+
+
+A ANATOMIA DE UM TESTE
+
+Tem três partes, e vale escrever nessa ordem sempre:
+
+    def test_alguma_coisa():
+        entrada = ...                    # Arrange — prepara
+        resultado = funcao(entrada)      # Act — executa, uma linha só
+        assert resultado == ...          # Assert — verifica
+
+O nome da função PRECISA começar com test_ (é assim que o pytest a encontra) e
+deve descrever o comportamento, não a função.
+
+    RUIM:  test_grid_position_label_1
+    BOM:   test_centro_da_imagem_vira_no_centro
+
+
+AS PERGUNTAS QUE VOCÊ TEM QUE RESPONDER
+
+Não vou te dar a lista de casos pronta, porque saber gerar casos é a
+habilidade — decorar casos não é.
+
+  1. A grade é 3x3. Quantas células existem? Cada uma produz uma string
+     diferente?
+
+  2. Olhe as três primeiras linhas do corpo da função. O corte é "cx < 1/3".
+     Então o que acontece EXATAMENTE em cx = 1/3? Cai na coluna da esquerda ou
+     do meio? Esse é o tipo de caso que quebra em produção e ninguém testa.
+
+  3. O que a função devolve nos quatro cantos? E na borda de cima, no meio?
+
+  4. Olhe os "if" do final: há um caminho que devolve duas partes juntas,
+     separadas por vírgula. Qual entrada chega nele?
+
+Escreva um teste para cada resposta. Não se preocupe em ser elegante nem em
+evitar repetição — na primeira rodada, repetitivo e óbvio é melhor que esperto.
+
+Quando você tiver uns 5 ou 6 testes, eu te mostro como o
+@pytest.mark.parametrize colapsa todos eles em um só — e aí você vai entender
+POR QUE ele existe, em vez de usá-lo porque eu mandei.
+
+Rode com:
+
+    uv run pytest -v
+
+E me mostre o resultado. Inclusive se der erro. Principalmente se der erro.
+
+
+-------------------------------------------------------------------------------
+Antes de começar: me diz o quanto você já mexeu com pytest. Se já escreveu
+teste em Python antes, eu acelero e paro de explicar o que é assert; se é a
+primeira vez, eu seguro mais o ritmo nos próximos passos. Não tem resposta
+errada, é só para eu calibrar.
+===============================================================================
+
+
+O PROBLEMA QUE O MOCK EXISTE PARA RESOLVER
+-------------------------------------------------------------------------------
+
+Pense no que aconteceria se você testasse analyze_with_google_vision chamando o
+Google de verdade:
+
+  - CUSTA DINHEIRO. Cada chamada ao Vision é cobrada. Uma suíte que roda 50
+    vezes por dia enquanto você desenvolve vira uma fatura.
+
+  - EXIGE INTERNET E CREDENCIAL. O teste quebraria no seu Wi-Fi ruim, ou na
+    Vercel, ou na máquina do seu orientador — por motivo nenhum relacionado ao
+    seu código.
+
+  - É LENTO. Meio segundo por chamada. Multiplique por 30 testes e ninguém roda
+    mais a suíte.
+
+  - NÃO É DETERMINÍSTICO. O Google pode mudar o modelo e passar a devolver
+    "Bottle" onde antes devolvia "Water bottle". Seu teste ficaria vermelho sem
+    você ter tocado em nada.
+
+  - VOCÊ NÃO CONSEGUE PROVOCAR AS FALHAS. Como é que você faz o Google devolver
+    erro de cota para testar o seu except? Não faz.
+
+Esse último item é o mais importante e o menos óbvio:
+
+    Metade do valor do mock não é evitar a chamada real — é conseguir forçar
+    cenários que você não consegue provocar de verdade.
+
+
+O QUE É
+-------------------------------------------------------------------------------
+
+Mock é um DUBLÊ: um objeto falso que você põe no lugar do real, que responde o
+que você mandar ele responder.
+
+A analogia é a do cinema. A atriz não pula do prédio de verdade — entra um
+dublê, que faz a cena parecer a mesma da perspectiva da câmera. O filme testa a
+cena, não a queda.
+
+
+O VOCABULÁRIO (que quase todo mundo usa errado)
+-------------------------------------------------------------------------------
+
+Vale saber, porque na banca alguém pode perguntar:
+
+  STUB   Só devolve resposta pronta.
+         "Quando te chamarem, retorne isto."
+
+  MOCK   Devolve resposta E registra como foi chamado, para você verificar
+         depois.
+
+  FAKE   Implementação simplificada mas real.
+         Ex.: banco em memória no lugar do Postgres.
+
+  SPY    Embrulha o objeto real e observa as chamadas, sem substituir o
+         comportamento.
+
+Na prática todo mundo chama tudo de "mock" e ninguém corrige. Mas a distinção
+útil é: STUB RESPONDE, MOCK RESPONDE E VIGIA.
+
+
+A REGRA QUE SEPARA TESTE BOM DE TESTE INÚTIL
+-------------------------------------------------------------------------------
+
+Aqui é onde a maioria erra, então grave isto:
+
+    MOCKE A FRONTEIRA DO SEU SISTEMA, NUNCA O QUE VOCÊ QUER TESTAR.
+
+Se você mockar o decide_text_or_object para testar a rota /analyze, você não
+testou nada — testou que o mock devolve o que você mandou devolver. Teste que
+mocka demais vira um espelho: passa sempre, e passa mesmo quando o código está
+quebrado.
+
+A fronteira do seu backend é exatamente uma: A CHAMADA AO GOOGLE VISION. É o
+único ponto onde seu código fala com o mundo lá fora. Tudo antes e depois dela é
+seu, é determinístico, e deve rodar de verdade no teste.
+
+Repare na consequência disso no seu projeto: quando você testar /analyze no
+passo 6, vai mockar SÓ o analyze_with_google_vision. A validação de tipo de
+arquivo, a de tamanho, a normalização com Pillow, a regra de decisão, a
+montagem da resposta — tudo isso roda de verdade. O teste percorre o pipeline
+inteiro e só finge na última fronteira.
+
+
+POR QUE A NOTA DO VAULT DESTACA "O MOCK DO VISION"
+-------------------------------------------------------------------------------
+
+Porque construir esse dublê exige uma decisão de design: QUAL FORMATO ELE
+DEVOLVE?
+
+Olhe o que analyze_with_google_vision retorna hoje — um dicionário com
+text_annotations, labels, objects e raw. Esse dicionário é um CONTRATO que você
+mesma inventou: é a fronteira entre "o que o Google fala" e "o que o meu sistema
+entende".
+
+O mock materializa esse contrato. E aí acontece a coisa interessante: se o
+contrato for confuso, o mock fica difícil de escrever. Teste difícil de escrever
+é quase sempre sintoma de código mal desenhado, não de teste mal feito.
+
+É por isso que vale fazer na ordem — quando você chegar no passo 5, já vai
+conhecer esse dicionário de cor por ter testado o decision.py, que é quem o
+consome.
+
+
+O QUE ISSO MUDA NO PASSO ATUAL
+-------------------------------------------------------------------------------
+
+Nada — e isso é de propósito. grid_position_label recebe dois números e devolve
+uma string. Não fala com ninguém. FUNÇÃO PURA NÃO PRECISA DE MOCK, e essa é
+justamente a razão de ela ser o primeiro alvo.
+
+Guarde a pergunta como bússola daqui para a frente:
+
+    "Essa função fala com o mundo lá fora?"
+
+Se não fala, teste direto. Se fala, é ali que entra o dublê.
+
+===============================================================================
