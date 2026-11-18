@@ -1,7 +1,7 @@
 [project]
 name = "avia-backend"
 version = "0.1.0"
-description = "API do AVIA — Assistente Visual Acessível (OCR via OCR.space, reconhecimento de objetos via Hugging Face Inference API)"
+description = "API do AVIA — Assistente Visual de Acessibilidade (OCR via OCR.space, reconhecimento de objetos via Hugging Face Inference API)"
 requires-python = ">=3.11"
 dependencies = [
     # fastapi[standard] já traz uvicorn, python-multipart (uploads), httpx e a CLI `fastapi`

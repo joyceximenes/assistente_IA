@@ -87,7 +87,7 @@ export default function Home({ onOpenCamera }: Props) {
 
   return (
     <div className="home">
-      <h1 className="home-title">Avia - Assistente Visual Acessível</h1>
+      <h1 className="home-title">Avia - Assistente Visual de Acessibilidade</h1>
 
       <div className="card home-card">
         <p className="p">Olá! Diga “abrir câmera” ou toque no botão para iniciar.</p>

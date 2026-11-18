@@ -1,4 +1,4 @@
-# AVIA — Assistente Visual Acessível
+# AVIA — Assistente Visual de Acessibilidade
 
 PWA que ajuda pessoas cegas ou com baixa visão a ler textos e identificar objetos
 pela câmera do celular, com orientação por voz em tempo real durante a captura.
