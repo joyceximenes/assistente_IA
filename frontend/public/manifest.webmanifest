@@ -5,7 +5,7 @@
   "display": "standalone",
   "background_color": "#0b1020",
   "theme_color": "#111827",
-  "description": "Protótipo de assistente visual com OCR e reconhecimento via Google Vision.",
+  "description": "Assistente Visual de Acessibilidade: orienta a captura por voz e lê textos e objetos (OCR.space e DETR).",
   "icons": [
     {
       "src": "/icons/android-chrome-192x192.png",
