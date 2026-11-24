@@ -307,6 +307,11 @@ describe("laço de comandos de voz", () => {
 
     expect(await screen.findByText(/nenhum comando ouvido/i)).toBeInTheDocument();
     expect(listenOnceMock).toHaveBeenCalledTimes(1);
+    // o aviso também é falado: quem não vê a tela precisa ouvir que o
+    // microfone desligou
+    await waitFor(() => {
+      expect(falas()).toContain("Nenhum comando ouvido. Use os botões na tela.");
+    });
   });
 
   it("desiste depois de três comandos não entendidos", async () => {
@@ -317,6 +322,9 @@ describe("laço de comandos de voz", () => {
     expect(await screen.findByText("Use os botões na tela.")).toBeInTheDocument();
     expect(falas().filter((f) => f.startsWith("Não entendi."))).toHaveLength(3);
     expect(listenOnceMock).toHaveBeenCalledTimes(3);
+    await waitFor(() => {
+      expect(falas().at(-1)).toBe("Use os botões na tela.");
+    });
   });
 
   it("passa o mesmo AbortSignal do efeito para cada escuta", async () => {

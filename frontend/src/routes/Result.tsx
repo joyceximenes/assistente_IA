@@ -117,8 +117,12 @@ export default function Result({ result, onRetry, onHome }: Props) {
       if (cancelledRef.current) return;
 
       if (heard === null) {
-        // silêncio: para de ouvir e deixa os botões
-        setVoiceStatus("Nenhum comando ouvido. Use os botões na tela.");
+        // silêncio: para de ouvir e deixa os botões. A frase também é falada,
+        // e não só escrita: quem não vê a tela precisa saber que o microfone
+        // desligou e que a saída agora são os botões.
+        const msg = "Nenhum comando ouvido. Use os botões na tela.";
+        setVoiceStatus(msg);
+        await speakAsync(msg);
         return;
       }
 
@@ -154,7 +158,10 @@ export default function Result({ result, onRetry, onHome }: Props) {
       await speakAsync(`Não entendi. ${COMMANDS_HINT}`);
     }
 
+    // três comandos não entendidos: mesma lógica do silêncio, falado também
+    if (cancelledRef.current) return;
     setVoiceStatus("Use os botões na tela.");
+    await speakAsync("Use os botões na tela.");
   }
 
   function handleReadAllButton() {
