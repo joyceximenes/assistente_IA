@@ -160,9 +160,12 @@ def test_rota_analyze_devolve_502_quando_o_vision_falha(
     # Act
     response = client.post("/analyze", files=arquivo)
 
-    # Assert — 502 Bad Gateway: a culpa é do provedor, não do usuário.
+    # Assert — 502 Bad Gateway: a culpa é do provedor, não do usuário. O
+    # detail é falado em voz alta pelo frontend, então é uma frase para a
+    # pessoa; o erro técnico do provedor não vaza na resposta.
     assert response.status_code == 502
-    assert response.json()["detail"] == "Vision error: quota exceeded"
+    assert response.json()["detail"] == routes.PROVIDERS_DOWN_MESSAGE
+    assert "quota" not in response.json()["detail"]
 
 
 # --- helpers para os cenários de decisão -------------------------------------

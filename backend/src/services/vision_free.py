@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import logging
 from typing import Any
 
 import httpx
@@ -12,6 +13,8 @@ OCR_SPACE_URL = "https://api.ocr.space/parse/image"
 HUGGINGFACE_OBJECT_DETECTION_URL = "https://router.huggingface.co/hf-inference/models/facebook/detr-resnet-50"
 
 _TIMEOUT = httpx.Timeout(30.0)
+
+logger = logging.getLogger(__name__)
 
 
 class VisionProviderError(RuntimeError):
@@ -27,19 +30,44 @@ def analyze_with_free_apis(image_bytes: bytes) -> dict[str, Any]:
 
     Retorna o mesmo formato que decision.py já espera: text_annotations, labels,
     objects (com normalized_vertices) e raw.
+
+    Os dois provedores são independentes: se um falhar (cota esgotada, token
+    inválido, fora do ar), a análise segue com o outro, e a falha fica
+    registrada em raw["provider_errors"]. Só quando os dois falham a análise
+    inteira vira VisionProviderError.
     """
-    text_annotations = _ocr_space(image_bytes)
-    objects, labels = _huggingface_object_detection(image_bytes)
+    erros: list[str] = []
+
+    try:
+        text_annotations = _ocr_space(image_bytes)
+    except VisionProviderError as e:
+        logger.warning("OCR.space falhou; seguindo só com a detecção de objetos: %s", e)
+        erros.append(str(e))
+        text_annotations = []
+
+    try:
+        objects, labels = _huggingface_object_detection(image_bytes)
+    except VisionProviderError as e:
+        logger.warning("Hugging Face falhou; seguindo só com o OCR: %s", e)
+        erros.append(str(e))
+        objects, labels = [], []
+
+    if len(erros) == 2:
+        raise VisionProviderError(" | ".join(erros))
+
+    raw: dict[str, Any] = {
+        "text_count": len(text_annotations),
+        "label_count": len(labels),
+        "object_count": len(objects),
+    }
+    if erros:
+        raw["provider_errors"] = erros
 
     return {
         "text_annotations": text_annotations,
         "labels": labels,
         "objects": objects,
-        "raw": {
-            "text_count": len(text_annotations),
-            "label_count": len(labels),
-            "object_count": len(objects),
-        },
+        "raw": raw,
     }
 
 

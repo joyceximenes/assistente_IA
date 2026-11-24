@@ -121,58 +121,95 @@ def test_labels_dedup_mantem_o_maior_score(monkeypatch, imagem_100x50):
     assert len(resultado["objects"]) == 2  # cada detecção continua com sua própria box
 
 
-# --- tratamento de erro -----------------------------------------------------------
+# --- um provedor falha: a análise segue com o outro ------------------------------
+
+_OCR_COM_TEXTO = {"ParsedResults": [{"ParsedText": "LEITE INTEGRAL"}]}
+_HF_COM_GARRAFA = [{"label": "bottle", "score": 0.9, "box": {"xmin": 10, "ymin": 5, "xmax": 50, "ymax": 25}}]
+_OCR_COM_ERRO = {"IsErroredOnProcessing": True, "ErrorMessage": ["Bad image data"]}
 
 
-def test_erro_reportado_pelo_ocr_space_vira_erro_de_dominio(monkeypatch, imagem_100x50):
+@pytest.mark.parametrize(
+    ("hf_resposta", "mensagem"),
+    [
+        (_RespostaFalsa(status_code=503), "cold start"),
+        (_RespostaFalsa(status_code=402), "Hugging Face call error"),  # cota do mês esgotada
+        (_RespostaFalsa(status_code=401), "Hugging Face call error"),  # token inválido
+        (_RespostaFalsa(json_data={"error": "modelo indisponível"}), "modelo indisponível"),
+    ],
+)
+def test_falha_do_hf_mantem_o_texto_do_ocr(monkeypatch, imagem_100x50, hf_resposta, mensagem):
+    _mock_post(monkeypatch, ocr_resposta=_RespostaFalsa(json_data=_OCR_COM_TEXTO), hf_resposta=hf_resposta)
+
+    resultado = analyze_with_free_apis(imagem_100x50)
+
+    assert resultado["text_annotations"] == [{"description": "LEITE INTEGRAL", "locale": "por"}]
+    assert resultado["objects"] == []
+    assert resultado["labels"] == []
+    assert len(resultado["raw"]["provider_errors"]) == 1
+    assert mensagem in resultado["raw"]["provider_errors"][0]
+
+
+def test_token_hf_ausente_mantem_o_texto_do_ocr(monkeypatch, imagem_100x50):
+    _mock_post(monkeypatch, ocr_resposta=_RespostaFalsa(json_data=_OCR_COM_TEXTO))
+    monkeypatch.setattr(settings, "huggingface_api_token", None)
+
+    resultado = analyze_with_free_apis(imagem_100x50)
+
+    assert resultado["text_annotations"] != []
+    assert "HUGGINGFACE_API_TOKEN" in resultado["raw"]["provider_errors"][0]
+
+
+def test_falha_do_ocr_mantem_os_objetos_do_hf(monkeypatch, imagem_100x50):
     _mock_post(
         monkeypatch,
-        ocr_resposta=_RespostaFalsa(
-            json_data={"IsErroredOnProcessing": True, "ErrorMessage": ["Bad image data"]}
-        ),
+        ocr_resposta=_RespostaFalsa(json_data=_OCR_COM_ERRO),
+        hf_resposta=_RespostaFalsa(json_data=_HF_COM_GARRAFA),
     )
 
-    with pytest.raises(VisionProviderError, match="OCR.space error: Bad image data"):
-        analyze_with_free_apis(imagem_100x50)
+    resultado = analyze_with_free_apis(imagem_100x50)
+
+    assert resultado["text_annotations"] == []
+    assert [o["name"] for o in resultado["objects"]] == ["bottle"]
+    assert "OCR.space error: Bad image data" in resultado["raw"]["provider_errors"][0]
 
 
-def test_hf_cold_start_vira_erro_de_dominio(monkeypatch, imagem_100x50):
-    _mock_post(monkeypatch, hf_resposta=_RespostaFalsa(status_code=503))
+def test_chave_ocr_ausente_mantem_os_objetos_do_hf(monkeypatch, imagem_100x50):
+    _mock_post(monkeypatch, hf_resposta=_RespostaFalsa(json_data=_HF_COM_GARRAFA))
+    monkeypatch.setattr(settings, "ocr_space_api_key", None)
 
-    with pytest.raises(VisionProviderError, match="cold start"):
-        analyze_with_free_apis(imagem_100x50)
+    resultado = analyze_with_free_apis(imagem_100x50)
 
-
-def test_hf_erro_no_corpo_vira_erro_de_dominio(monkeypatch, imagem_100x50):
-    _mock_post(
-        monkeypatch,
-        hf_resposta=_RespostaFalsa(json_data={"error": "modelo indisponível"}),
-    )
-
-    with pytest.raises(VisionProviderError, match="modelo indisponível"):
-        analyze_with_free_apis(imagem_100x50)
+    assert len(resultado["objects"]) == 1
+    assert "OCR_SPACE_API_KEY" in resultado["raw"]["provider_errors"][0]
 
 
-def test_falha_de_rede_no_ocr_vira_erro_de_dominio(monkeypatch, imagem_100x50):
+def test_sem_falha_nao_ha_provider_errors(monkeypatch, imagem_100x50):
+    _mock_post(monkeypatch)
+
+    resultado = analyze_with_free_apis(imagem_100x50)
+
+    assert "provider_errors" not in resultado["raw"]
+
+
+# --- os dois falham: aí sim a análise vira erro --------------------------------
+
+
+def test_falha_de_rede_nos_dois_vira_erro_de_dominio(monkeypatch, imagem_100x50):
     def post_que_falha(url, **kwargs):
         raise httpx.ConnectError("sem conexão")
 
     monkeypatch.setattr(vision_free.httpx, "post", post_que_falha)
 
-    with pytest.raises(VisionProviderError, match="OCR.space call error"):
+    with pytest.raises(VisionProviderError, match="OCR.space call error.*Hugging Face call error"):
         analyze_with_free_apis(imagem_100x50)
 
 
-def test_chave_ocr_ausente_vira_erro_de_dominio(monkeypatch, imagem_100x50):
-    monkeypatch.setattr(settings, "ocr_space_api_key", None)
+def test_erro_nos_dois_provedores_vira_erro_de_dominio(monkeypatch, imagem_100x50):
+    _mock_post(
+        monkeypatch,
+        ocr_resposta=_RespostaFalsa(json_data=_OCR_COM_ERRO),
+        hf_resposta=_RespostaFalsa(status_code=402),
+    )
 
-    with pytest.raises(VisionProviderError, match="OCR_SPACE_API_KEY"):
-        analyze_with_free_apis(imagem_100x50)
-
-
-def test_token_hf_ausente_vira_erro_de_dominio(monkeypatch, imagem_100x50):
-    _mock_post(monkeypatch)  # OCR passa normalmente
-    monkeypatch.setattr(settings, "huggingface_api_token", None)
-
-    with pytest.raises(VisionProviderError, match="HUGGINGFACE_API_TOKEN"):
+    with pytest.raises(VisionProviderError, match="Bad image data"):
         analyze_with_free_apis(imagem_100x50)

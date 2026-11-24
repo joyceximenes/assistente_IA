@@ -1,3 +1,4 @@
+import logging
 from typing import Annotated
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
@@ -13,6 +14,12 @@ from src.services.image_io import (
 from src.services.vision_free import VisionProviderError, analyze_with_free_apis
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
+
+PROVIDERS_DOWN_MESSAGE = (
+    "O serviço de reconhecimento está indisponível no momento. "
+    "Tente novamente em alguns instantes."
+)
 
 
 @router.get("/health")
@@ -53,10 +60,14 @@ def analyze(image: Annotated[UploadFile, File()]) -> AnalyzeResponse:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
     # 5) chamar os provedores de visão (OCR.space + Hugging Face)
+    # Só chega aqui quando os dois provedores falharam. O detalhe técnico (em
+    # inglês, com código HTTP) vai para o log; o frontend fala o "detail" em
+    # voz alta, então ele precisa ser uma frase para a pessoa, e não um erro.
     try:
         vision_result = analyze_with_free_apis(normalized.bytes)
     except VisionProviderError as e:
-        raise HTTPException(status_code=502, detail=str(e)) from e
+        logger.error("Provedores de visão indisponíveis: %s", e)
+        raise HTTPException(status_code=502, detail=PROVIDERS_DOWN_MESSAGE) from e
 
     # 6) decidir texto vs objeto
     decision = decide_text_or_object(vision_result)
