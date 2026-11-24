@@ -324,7 +324,7 @@ def test_devolve_objeto_traduzido():
     # Assert — o nome do objeto é traduzido para pt-br.
     assert resultado.result.startswith("garrafa")
 
-def test_label_sem_score_vale_zero():
+def test_label_sem_score_e_descartado():
     # Arrange — payload sem texto, mas com um label sem score.
     vision_data = {
         "labels": [
@@ -335,8 +335,42 @@ def test_label_sem_score_vale_zero():
     # Act
     resultado = decide_text_or_object(vision_data)
 
-    # Assert — o score ausente vira 0.0.
+    # Assert — score ausente vale 0.0, fica abaixo do corte e não é anunciado.
+    assert resultado.type == "unknown"
     assert resultado.confidence == 0.0
+
+
+def test_label_abaixo_do_corte_nao_vira_ultimo_recurso():
+    # Arrange — sem texto e sem objeto; só palpites fracos do detector.
+    vision_data = {
+        "labels": [
+            {"description": "bottle", "score": 0.69},
+            {"description": "cup", "score": 0.4},
+        ]
+    }
+
+    # Act
+    resultado = decide_text_or_object(vision_data)
+
+    # Assert — o corte de 0.7 vale também para o último recurso: em vez de
+    # falar "garrafa" com 69% de confiança, o app diz que não identificou.
+    assert resultado.type == "unknown"
+    assert resultado.result == "Não foi possível identificar texto ou objeto."
+
+
+def test_label_exatamente_no_corte_e_aceito():
+    vision_data = {"labels": [{"description": "bottle", "score": 0.7}]}
+
+    resultado = decide_text_or_object(vision_data)
+
+    assert resultado.type == "object"
+    assert resultado.result == "garrafa"
+
+
+def test_label_com_score_invalido_e_descartado():
+    vision_data = {"labels": [{"description": "bottle", "score": "alto"}]}
+
+    assert decide_text_or_object(vision_data).type == "unknown"
 
 def test_confidence_e_float():
     # Arrange — payload sem texto, mas com um label com score como string.

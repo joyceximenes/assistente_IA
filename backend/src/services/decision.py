@@ -171,6 +171,14 @@ def _extract_objects(vision_data: dict[str, Any]) -> list[DetectedObjectInfo]:
 MIN_OBJECT_CONFIDENCE = 0.7
 
 
+def _score(item: dict[str, Any]) -> float:
+    """Score como float; ausente, vazio ou inválido vale 0.0."""
+    try:
+        return float(item.get("score", 0.0) or 0.0)
+    except (TypeError, ValueError):
+        return 0.0
+
+
 def decide_text_or_object(vision_data: dict[str, Any]) -> Decision:
     """
     Aplica regra de decisão:
@@ -178,9 +186,16 @@ def decide_text_or_object(vision_data: dict[str, Any]) -> Decision:
     - Senão, se houver objetos localizados → objeto com posição na grade 3x3
     - Senão, se houver labels → objeto sem posição
     - Senão → desconhecido
+
+    O corte de confiança (MIN_OBJECT_CONFIDENCE) vale para objetos e para
+    labels: o último recurso também não anuncia um palpite fraco do detector.
     """
     texts = vision_data.get("text_annotations", [])
-    labels = vision_data.get("labels", [])
+    labels = [
+        label
+        for label in vision_data.get("labels", []) or []
+        if _score(label) >= MIN_OBJECT_CONFIDENCE
+    ]
     objects = [o for o in _extract_objects(vision_data) if o.score >= MIN_OBJECT_CONFIDENCE]
 
     # OCR: o primeiro item costuma ser o texto completo
@@ -210,11 +225,11 @@ def decide_text_or_object(vision_data: dict[str, Any]) -> Decision:
 
     # Labels gerais (sem posição)
     if labels:
-        best = max(labels, key=lambda label: label.get("score", 0))
+        best = max(labels, key=_score)
         return Decision(
             type="object",
             result=translate_object_name(best.get("description", "Objeto")),
-            confidence=float(best.get("score", 0)),
+            confidence=_score(best),
         )
 
     # Nada encontrado
